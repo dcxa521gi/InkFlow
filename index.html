@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>InkFlow Novel Generator</title>
+    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              gray: {
+                // Eye Protection Mode Overrides for Light Mode
+                50: '#F9F5EB',  // Warm White Background
+                100: '#EBE5D5', // Warm Border/Secondary
+                200: '#DCD3C0',
+                300: '#C5BBA5',
+                // Dark Mode grays remain standard
+                750: '#2d3748',
+                800: '#1f2937',
+                850: '#1a202c',
+                900: '#111827',
+                950: '#030712',
+              }
+            },
+            typography: (theme) => ({
+              DEFAULT: {
+                css: {
+                  color: theme('colors.gray.700'),
+                  // Ensure text is readable in eye protection mode
+                  '--tw-prose-body': '#4a4a4a', 
+                  '--tw-prose-headings': '#2d2d2d',
+                  strong: { color: theme('colors.gray.900') },
+                },
+              },
+              dark: {
+                css: {
+                  color: theme('colors.gray.300'),
+                  strong: { color: theme('colors.white') },
+                  a: { color: theme('colors.indigo.400') },
+                  code: { color: theme('colors.pink.300') },
+                  'h1, h2, h3, h4': { color: theme('colors.gray.100') },
+                  blockquote: { borderLeftColor: theme('colors.indigo.500'), color: theme('colors.gray.400') },
+                }
+              }
+            }),
+          },
+        },
+      }
+    </script>
+    <style>
+      /* Custom Scrollbar */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent; 
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #9ca3af; 
+        border-radius: 4px;
+      }
+      .dark ::-webkit-scrollbar-track {
+        background: #1f2937;
+      }
+      .dark ::-webkit-scrollbar-thumb {
+        background: #4b5563;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #6b7280; 
+      }
+      .markdown-body p { margin-bottom: 1em; line-height: 1.7; }
+      .typing-cursor::after {
+        content: '▋';
+        animation: blink 1s step-start infinite;
+        margin-left: 2px;
+      }
+      @keyframes blink { 50% { opacity: 0; } }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "@google/genai": "https://esm.sh/@google/genai@^1.38.0",
+    "react/": "https://esm.sh/react@^19.2.4/",
+    "react": "https://esm.sh/react@^19.2.4",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "react-markdown": "https://esm.sh/react-markdown@9.0.1",
+    "remark-gfm": "https://esm.sh/remark-gfm@4.0.0",
+    "remark-breaks": "https://esm.sh/remark-breaks@4.0.0"
+  }
+}
+</script>
+</head>
+  <body class="bg-gray-50 dark:bg-gray-950 text-gray-800 dark:text-gray-100 overflow-hidden h-screen w-screen selection:bg-indigo-500 selection:text-white">
+    <div id="root"></div>
+  </body>
+</html>

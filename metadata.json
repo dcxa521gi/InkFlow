@@ -1,0 +1,5 @@
+{
+  "name": "InkFlow Novel Gen",
+  "description": "A conversational AI novel generator powered by Gemini. Discuss your ideas, configure parameters, and generate stories in a split-view interface.",
+  "requestFramePermissions": []
+}

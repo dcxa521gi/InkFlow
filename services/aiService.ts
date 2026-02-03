@@ -25,6 +25,20 @@ const buildSystemInstruction = (settings: AppSettings, contextSummary?: string):
   return instruction;
 };
 
+// Helper to filter history if anchor exists
+const getHistoryForAI = (history: Message[], contextSummary?: string): Message[] => {
+    if (!contextSummary) return history;
+    
+    // If we have an anchor, we assume older history is summarized.
+    // We only need the System Instruction (containing summary) + Recent Context.
+    // Keep last 6 messages to maintain immediate flow.
+    const recentCount = 6;
+    if (history.length <= recentCount) return history;
+    
+    return history.slice(-recentCount);
+};
+
+
 // --- Google Gemini Implementation ---
 const createGeminiClient = () => {
   return new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -40,9 +54,11 @@ const generateGeminiStream = async (
 ): Promise<string> => {
   const ai = createGeminiClient();
   
-  // Gemini expects history to be the CONTEXT (past messages).
-  const pastHistory = history.slice(0, -1);
-  const lastMessage = history[history.length - 1];
+  // Apply Anchor Logic: Truncate history if summary exists
+  const effectiveHistory = getHistoryForAI(history, contextSummary);
+  
+  const pastHistory = effectiveHistory.slice(0, -1);
+  const lastMessage = effectiveHistory[effectiveHistory.length - 1];
 
   const chatHistory = pastHistory.map(msg => ({
     role: msg.role,
@@ -99,9 +115,12 @@ const generateOpenAIStream = async (
     throw new Error("请在设置中配置 OpenAI API Key");
   }
 
+  // Apply Anchor Logic: Truncate history if summary exists
+  const effectiveHistory = getHistoryForAI(history, contextSummary);
+
   const messages = [
     { role: "system", content: buildSystemInstruction(settings, contextSummary) },
-    ...history.map(m => ({ 
+    ...effectiveHistory.map(m => ({ 
       role: m.role === 'model' ? 'assistant' : 'user', 
       content: m.content 
     }))

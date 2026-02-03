@@ -8,7 +8,7 @@ import ComparisonModal from './components/ComparisonModal';
 import { generateStreamResponse } from './services/aiService';
 import { Message, AppSettings, ViewMode, NovelSession, OptimizationState } from './types';
 import { DEFAULT_SETTINGS } from './constants';
-import { SettingsIcon, BookOpenIcon, MessageSquareIcon, MailIcon, SunIcon, MoonIcon, XIcon, LibraryIcon, HelpCircleIcon, HistoryIcon } from './components/Icons';
+import { SettingsIcon, BookOpenIcon, MessageSquareIcon, MailIcon, SunIcon, MoonIcon, EyeIcon, XIcon, LibraryIcon, HelpCircleIcon, HistoryIcon, EditIcon, SparklesIcon, SpeakerIcon } from './components/Icons';
 
 // Helper to clean titles
 const cleanTitle = (rawTitle: string) => {
@@ -38,6 +38,13 @@ const createDefaultNovel = (): NovelSession => ({
   }],
   settings: { ...DEFAULT_SETTINGS }
 });
+
+// Toast Component
+interface Toast {
+    id: number;
+    message: string;
+    type: 'success' | 'error' | 'info';
+}
 
 function App() {
   const [novels, setNovels] = useState<NovelSession[]>(() => {
@@ -94,12 +101,32 @@ function App() {
   const messages = activeNovel?.messages || [];
   const settings = activeNovel?.settings || DEFAULT_SETTINGS;
 
-  const [inputValue, setInputValue] = useState('');
+  // Dynamic Document Title Logic
   const [isStreaming, setIsStreaming] = useState(false);
+  
+  useEffect(() => {
+      const baseTitle = "InkFlow";
+      const currentTitle = activeNovel?.title;
+      const isDefault = !currentTitle || currentTitle === '未命名小说';
+      
+      if (isDefault) {
+          document.title = isStreaming ? `生成中... - ${baseTitle}` : baseTitle;
+      } else {
+          const status = isStreaming ? '生成中' : '创作中';
+          document.title = `${currentTitle} - ${status} - ${baseTitle}`;
+      }
+  }, [activeNovel?.title, isStreaming]);
+
+  const [inputValue, setInputValue] = useState('');
   const abortControllerRef = useRef<AbortController | null>(null);
-  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
-    try { return (localStorage.getItem('inkflow_theme') === 'light') ? 'light' : 'dark'; } catch { return 'dark'; }
+  
+  // Theme state: 'light' | 'eye-care' | 'dark'
+  const [theme, setTheme] = useState<'light' | 'eye-care' | 'dark'>(() => {
+    try { 
+        return (localStorage.getItem('inkflow_theme') as any) || 'dark'; 
+    } catch { return 'dark'; }
   });
+
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const [isContactOpen, setIsContactOpen] = useState(false);
@@ -108,10 +135,37 @@ function App() {
   const [viewMode, setViewMode] = useState<ViewMode>(ViewMode.Split);
   const [optState, setOptState] = useState<OptimizationState | null>(null);
 
+  // Toast State
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+      const id = Date.now();
+      setToasts(prev => [...prev, { id, message, type }]);
+      setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000);
+  };
+
   useEffect(() => { if (novels.length > 0) localStorage.setItem('inkflow_library', JSON.stringify(novels)); }, [novels]);
-  useEffect(() => { localStorage.setItem('inkflow_theme', theme); const html = document.documentElement; if (theme === 'dark') html.classList.add('dark'); else html.classList.remove('dark'); }, [theme]);
+  
+  // Apply theme classes
+  useEffect(() => { 
+      localStorage.setItem('inkflow_theme', theme); 
+      const html = document.documentElement;
+      html.classList.remove('dark', 'light', 'ec'); 
+      
+      if (theme === 'dark') {
+          html.classList.add('dark');
+      } else if (theme === 'eye-care') {
+           html.classList.add('ec');
+      }
+      // 'light' is default (no class)
+  }, [theme]);
 
   if (!activeNovel) return null;
+
+  const toggleTheme = () => {
+      if (theme === 'light') setTheme('eye-care');
+      else if (theme === 'eye-care') setTheme('dark');
+      else setTheme('light');
+  };
 
   const createNewNovel = () => {
       const newNovel = createDefaultNovel();
@@ -148,10 +202,16 @@ function App() {
   const updateSettings = (newSettings: AppSettings) => { updateActiveNovel({ settings: newSettings }); };
 
   const handleAnchorContext = async () => {
-      if (isStreaming || messages.length < 5) return;
-      
-      const confirmMsg = "确定要构建剧情锚点吗？\n\nAI 将总结当前卷/单元的剧情和设定，并压缩历史消息。这能有效释放上下文空间，同时保证后续剧情连贯。\n\n建议在每一卷结束或由于字数过多导致 AI 遗忘设定时使用。";
-      if (!window.confirm(confirmMsg)) return;
+      if (isStreaming) {
+          showToast("AI 正在生成中，请稍后再试", "error");
+          return;
+      }
+      if (messages.length < 5) {
+          showToast("对话内容太少，暂无需构建锚点", "info");
+          return;
+      }
+
+      showToast("正在启动剧情锚定程序...", "info");
 
       setIsStreaming(true);
       const prompt = `【系统指令：分段锚定/卷末总结】
@@ -191,21 +251,21 @@ function App() {
           });
           
           const finalSummary = cleanAIResponse(summary);
-          const firstMsg = messages[0]; 
           
           const systemNotice: Message = {
               id: 'sys-notice-' + Date.now(),
               role: 'model',
-              content: `✅ **锚点构建成功 (分段锚定完成)**\n\n已为您压缩历史上下文。AI 已记住了上一卷的核心剧情与伏笔。\n\n**当前锚点摘要：**\n${finalSummary.slice(0, 150)}...\n\n您可以直接继续创作下一卷/下一章了。`,
+              content: `✅ **锚点构建成功 (分段锚定完成)**\n\n历史剧情已归档到 AI 记忆中。历史消息已保留在界面上，但 AI 将仅关注最新的剧情锚点和后续内容，以节省 Token 并保持逻辑连贯。\n\n**当前锚点摘要：**\n${finalSummary.slice(0, 100)}...`,
               timestamp: Date.now()
           };
           
-          const newMessages = [firstMsg, systemNotice];
+          const newMessages = [...messages, systemNotice];
           setNovels(prev => prev.map(n => n.id === activeNovel.id ? { ...n, messages: newMessages, contextSummary: finalSummary, lastModified: Date.now() } : n));
+          showToast("剧情锚点构建成功！历史记录已保留。", "success");
 
       } catch (e) {
           console.error("Anchoring failed", e);
-          alert("锚点构建失败，请重试。");
+          showToast("锚点构建失败，请检查网络", "error");
       } finally {
           setIsStreaming(false);
       }
@@ -248,6 +308,10 @@ function App() {
   }, [messages, settings.targetTotalChapters]);
 
   const sendMessage = async (text: string, currentHistory: Message[] = messages) => {
+    if (!activeNovel.contextSummary && currentHistory.length > 50) {
+        showToast("检测到对话过长，建议点击【剧情锚点】压缩上下文，避免遗忘。", "info");
+    }
+
     setIsStreaming(true);
     abortControllerRef.current = new AbortController();
     const signal = abortControllerRef.current.signal;
@@ -473,57 +537,218 @@ function App() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50 dark:bg-black text-gray-900 dark:text-gray-100 font-sans transition-colors">
-      <header className="h-16 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-4 lg:px-6 bg-white dark:bg-gray-900 shrink-0 z-10 transition-colors">
+    <div className="flex flex-col h-screen bg-white dark:bg-black ec:bg-ec-bg text-gray-900 dark:text-gray-100 ec:text-ec-text font-sans transition-colors relative">
+      
+      {/* Toast Container */}
+      <div className="fixed top-4 right-4 z-[100] flex flex-col gap-2 pointer-events-none">
+          {toasts.map(toast => (
+              <div key={toast.id} className={`toast-enter pointer-events-auto px-4 py-3 rounded-lg shadow-lg text-sm font-medium flex items-center gap-2
+                  ${toast.type === 'success' ? 'bg-green-100 text-green-800 border border-green-200' : ''}
+                  ${toast.type === 'error' ? 'bg-red-100 text-red-800 border border-red-200' : ''}
+                  ${toast.type === 'info' ? 'bg-indigo-100 text-indigo-800 border border-indigo-200' : ''}
+              `}>
+                  {toast.type === 'success' && <span>✅</span>}
+                  {toast.type === 'error' && <span>⚠️</span>}
+                  {toast.type === 'info' && <span className="animate-spin">⏳</span>}
+                  {toast.message}
+              </div>
+          ))}
+      </div>
+
+      <header className="h-16 border-b border-gray-200 dark:border-gray-800 ec:border-ec-border flex items-center justify-between px-4 lg:px-6 bg-white dark:bg-gray-900 ec:bg-ec-surface shrink-0 z-10 transition-colors">
         <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
                 <div className="w-8 h-8 bg-gradient-to-tr from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center font-bold text-white shadow-md">Ink</div>
-                <h1 className="font-bold text-lg tracking-tight hidden md:block">InkFlow</h1>
+                <h1 className="font-bold text-lg tracking-tight hidden md:flex items-center gap-1 ec:text-ec-text">
+                    InkFlow 
+                    <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded-full text-gray-500 dark:text-gray-400 font-medium">v1.3.0</span>
+                </h1>
             </div>
-            <div className="hidden lg:flex items-center gap-3 px-4 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-full text-xs text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700">
-                <input type="text" value={activeNovel.title} onChange={(e) => updateActiveNovel({ title: e.target.value })} className="font-bold text-indigo-600 dark:text-indigo-400 bg-transparent border-none focus:outline-none focus:ring-0 w-[150px] truncate hover:bg-gray-200 dark:hover:bg-gray-700 rounded px-1 transition-colors"/>
-                <span className="w-px h-3 bg-gray-300 dark:bg-gray-600"></span>
-                <button onClick={() => setIsSettingsOpen(true)} className="hover:text-indigo-600 dark:hover:text-indigo-400">章节: {novelStats.currentChapters}/{novelStats.totalChapters}</button>
-                <span className="w-px h-3 bg-gray-300 dark:bg-gray-600"></span>
+            <div className="hidden lg:flex items-center gap-3 px-4 py-1.5 bg-gray-100 dark:bg-gray-800 ec:bg-ec-bg rounded-full text-xs text-gray-600 dark:text-gray-300 ec:text-ec-text border border-gray-200 dark:border-gray-700 ec:border-ec-border">
+                <input type="text" value={activeNovel.title} onChange={(e) => updateActiveNovel({ title: e.target.value })} className="font-bold text-indigo-600 dark:text-indigo-400 ec:text-ec-accent bg-transparent border-none focus:outline-none focus:ring-0 w-[150px] truncate hover:bg-gray-200 dark:hover:bg-gray-700 ec:hover:bg-ec-surface rounded px-1 transition-colors"/>
+                <span className="w-px h-3 bg-gray-300 dark:bg-gray-600 ec:bg-ec-border"></span>
+                <button onClick={() => setIsSettingsOpen(true)} className="hover:text-indigo-600 dark:hover:text-indigo-400 ec:hover:text-ec-accent">章节: {novelStats.currentChapters}/{novelStats.totalChapters}</button>
+                <span className="w-px h-3 bg-gray-300 dark:bg-gray-600 ec:bg-ec-border"></span>
                 <span>正文字数: {(novelStats.wordCount / 10000).toFixed(1)}万</span>
             </div>
         </div>
-        <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
-             <button onClick={() => setViewMode(ViewMode.ChatOnly)} className={`p-2 rounded-md ${viewMode===ViewMode.ChatOnly?'bg-white dark:bg-gray-700 shadow-sm':''}`}><MessageSquareIcon /></button>
-             <button onClick={() => setViewMode(ViewMode.Split)} className={`p-2 rounded-md ${viewMode===ViewMode.Split?'bg-white dark:bg-gray-700 shadow-sm':''}`}><div className="flex gap-0.5"><div className="w-2 h-3 border border-current rounded-[1px]"></div><div className="w-2 h-3 border border-current rounded-[1px] bg-current"></div></div></button>
-             <button onClick={() => setViewMode(ViewMode.NovelOnly)} className={`p-2 rounded-md ${viewMode===ViewMode.NovelOnly?'bg-white dark:bg-gray-700 shadow-sm':''}`}><BookOpenIcon /></button>
+        <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 ec:bg-ec-bg p-1 rounded-lg">
+             <button onClick={() => setViewMode(ViewMode.ChatOnly)} className={`p-2 rounded-md ${viewMode===ViewMode.ChatOnly?'bg-white dark:bg-gray-700 ec:bg-ec-surface shadow-sm':''}`}><MessageSquareIcon /></button>
+             <button onClick={() => setViewMode(ViewMode.Split)} className={`p-2 rounded-md ${viewMode===ViewMode.Split?'bg-white dark:bg-gray-700 ec:bg-ec-surface shadow-sm':''}`}><div className="flex gap-0.5"><div className="w-2 h-3 border border-current rounded-[1px]"></div><div className="w-2 h-3 border border-current rounded-[1px] bg-current"></div></div></button>
+             <button onClick={() => setViewMode(ViewMode.NovelOnly)} className={`p-2 rounded-md ${viewMode===ViewMode.NovelOnly?'bg-white dark:bg-gray-700 ec:bg-ec-surface shadow-sm':''}`}><BookOpenIcon /></button>
         </div>
         <div className="flex items-center gap-2">
             {messages.length > 5 && (
-                 <button onClick={handleAnchorContext} disabled={isStreaming} className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-lg transition-colors border border-indigo-200 dark:border-indigo-800" title="压缩上下文：将当前剧情总结为锚点，释放Token空间，防止生成中断。">
+                 <button onClick={handleAnchorContext} disabled={isStreaming} className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-indigo-700 dark:text-indigo-300 ec:text-ec-accent bg-indigo-50 dark:bg-indigo-900/30 ec:bg-ec-surface hover:bg-indigo-100 dark:hover:bg-indigo-900/50 ec:hover:bg-ec-border rounded-lg transition-colors border border-indigo-200 dark:border-indigo-800 ec:border-ec-border" title="压缩上下文：将当前剧情总结为锚点，释放Token空间，防止生成中断。">
                     <span>⚓</span> 剧情锚点
                 </button>
             )}
-            <button onClick={() => setIsLibraryOpen(true)} className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-gray-100 dark:bg-gray-800 rounded-lg"><LibraryIcon /> 图书库</button>
+            <button onClick={() => setIsLibraryOpen(true)} className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-gray-100 dark:bg-gray-800 ec:bg-ec-bg rounded-lg ec:text-ec-text"><LibraryIcon /> 图书库</button>
             <button onClick={handleDownloadAll} className="p-2 rounded-lg sm:hidden">⬇️</button>
-            <button onClick={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')} className="p-2 rounded-lg text-gray-500">{theme === 'dark' ? <SunIcon /> : <MoonIcon />}</button>
-            <button onClick={() => setIsContactOpen(true)} className="p-2 text-gray-500"><MailIcon /></button>
-            <button onClick={() => setIsHelpOpen(true)} className="p-2 text-gray-500"><HelpCircleIcon /></button>
-            <button onClick={() => setIsVersionOpen(true)} className="p-2 text-gray-500"><HistoryIcon /></button>
-            <button onClick={() => setIsSettingsOpen(true)} className="p-2 bg-gray-100 dark:bg-gray-800 rounded-lg"><SettingsIcon /></button>
+            
+            {/* Theme Toggle */}
+            <button onClick={toggleTheme} className="p-2 rounded-lg text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 ec:text-ec-text ec:hover:text-black transition-colors" title="切换主题: 白天/护眼/暗黑">
+                {theme === 'light' ? <SunIcon /> : (theme === 'eye-care' ? <EyeIcon /> : <MoonIcon />)}
+            </button>
+            
+            <button onClick={() => setIsContactOpen(true)} className="p-2 text-gray-500 ec:text-ec-text"><MailIcon /></button>
+            <button onClick={() => setIsHelpOpen(true)} className="p-2 text-gray-500 ec:text-ec-text"><HelpCircleIcon /></button>
+            <button onClick={() => setIsVersionOpen(true)} className="p-2 text-gray-500 ec:text-ec-text"><HistoryIcon /></button>
+            <button onClick={() => setIsSettingsOpen(true)} className="p-2 bg-gray-100 dark:bg-gray-800 ec:bg-ec-bg rounded-lg ec:text-ec-text"><SettingsIcon /></button>
         </div>
       </header>
 
       <main className="flex-1 overflow-hidden relative flex">
-        <div className={`flex-1 h-full transition-all ${viewMode === ViewMode.NovelOnly ? 'hidden' : 'block'} ${viewMode === ViewMode.Split ? 'w-1/2 border-r border-gray-200 dark:border-gray-800' : 'w-full'}`}>
+        <div className={`flex-1 h-full transition-all ${viewMode === ViewMode.NovelOnly ? 'hidden' : 'block'} ${viewMode === ViewMode.Split ? 'w-1/2 border-r border-gray-200 dark:border-gray-800 ec:border-ec-border' : 'w-full'}`}>
           <ChatArea messages={messages} input={inputValue} isStreaming={isStreaming && !optState?.isOpen} placeholderText={placeholderText} onInputChange={handleInputChange} onSend={handleUserSend} onStop={handleStop} onMessageEdit={handleMessageEdit} onSummarize={handleSummarize} />
         </div>
-        <div className={`h-full transition-all bg-white dark:bg-gray-950 ${viewMode === ViewMode.ChatOnly ? 'hidden' : 'block'} ${viewMode === ViewMode.Split ? 'w-1/2' : 'w-full'}`}>
-           <NovelView messages={messages} settings={settings} onBatchGenerateToC={handleBatchToC} onBatchGenerateContent={handleBatchContent} onChapterAction={handleChapterAction} onTextSelectionOptimize={handleTextSelectionOptimize} isGenerating={isStreaming} />
+        <div className={`h-full transition-all bg-white dark:bg-gray-950 ec:bg-ec-bg ${viewMode === ViewMode.ChatOnly ? 'hidden' : 'block'} ${viewMode === ViewMode.Split ? 'w-1/2' : 'w-full'}`}>
+           <NovelView messages={messages} settings={settings} onBatchGenerateToC={handleBatchToC} onBatchGenerateContent={handleBatchContent} onChapterAction={handleChapterAction} onTextSelectionOptimize={handleTextSelectionOptimize} isGenerating={isStreaming} onMessageEdit={handleMessageEdit} />
         </div>
       </main>
 
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} settings={settings} onSave={updateSettings} />
       <LibraryModal isOpen={isLibraryOpen} onClose={() => setIsLibraryOpen(false)} novels={novels} currentNovelId={currentNovelId} onSelectNovel={(id) => {setCurrentNovelId(id); setIsLibraryOpen(false);}} onCreateNovel={createNewNovel} onDeleteNovel={deleteNovel} onRenameNovel={renameNovel} onDeconstructNovel={handleDeconstructNovel} />
       {optState && <ComparisonModal isOpen={optState.isOpen} onClose={() => { if (isStreaming) handleStop(); setOptState(null); }} title={optState.type === 'chapter' ? '章节重写/优化' : '段落润色'} oldContent={optState.originalContent} newContent={optState.newContent} onConfirm={handleConfirmOptimization} isApplying={false} isStreaming={isStreaming} />}
-      {isContactOpen && <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"><div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl w-full max-w-sm"><div className="p-4 border-b flex justify-between"><h3>联系开发者</h3><button onClick={() => setIsContactOpen(false)}><XIcon/></button></div><div className="p-8 text-center"><MailIcon/><p>support@inkflow.app</p></div></div></div>}
-      {isHelpOpen && <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"><div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col"><div className="p-4 border-b flex justify-between"><h3>使用教程</h3><button onClick={() => setIsHelpOpen(false)}><XIcon/></button></div><div className="p-6 overflow-y-auto"><p>使用分段锚定法解决长文上下文问题。</p></div></div></div>}
-      {isVersionOpen && <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"><div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col"><div className="p-4 border-b flex justify-between"><h3>版本介绍</h3><button onClick={() => setIsVersionOpen(false)}><XIcon/></button></div><div className="p-6 overflow-y-auto"><p>v1.3: 新增剧情锚点功能，支持长篇小说创作；优化基础设定提取；新增章节批量操作建议。</p></div></div></div>}
+      {isContactOpen && <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"><div className="bg-white dark:bg-gray-900 ec:bg-ec-bg border ec:border-ec-border rounded-xl shadow-2xl w-full max-w-sm"><div className="p-4 border-b ec:border-ec-border flex justify-between"><h3 className="ec:text-ec-text">联系开发者</h3><button onClick={() => setIsContactOpen(false)} className="ec:text-ec-text"><XIcon/></button></div><div className="p-8 text-center ec:text-ec-text"><MailIcon/><p>support@inkflow.app</p></div></div></div>}
+      
+      {/* Help Modal */}
+      {isHelpOpen && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fadeIn">
+            <div className="bg-white dark:bg-gray-900 ec:bg-ec-bg border ec:border-ec-border rounded-xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col">
+               <div className="p-4 border-b border-gray-200 dark:border-gray-700 ec:border-ec-border flex justify-between">
+                   <h3 className="font-bold text-gray-900 dark:text-white ec:text-ec-text text-lg">📚 使用教程 (Guide)</h3>
+                   <button onClick={() => setIsHelpOpen(false)} className="ec:text-ec-text"><XIcon/></button>
+               </div>
+               <div className="p-6 overflow-y-auto space-y-8 text-sm text-gray-600 dark:text-gray-300 ec:text-ec-text">
+                  <section>
+                    <h4 className="font-bold text-gray-900 dark:text-white ec:text-ec-text mb-3 text-base flex items-center gap-2"><span className="text-xl">🚀</span> 快速开始 (Quick Start)</h4>
+                    <ol className="list-decimal list-inside space-y-2 ml-1">
+                      <li><strong className="text-gray-800 dark:text-gray-200 ec:text-ec-text">第一步：初始化设定</strong><br/><span className="pl-5 block text-xs opacity-80">在对话框告诉 AI：“我想写一本赛博修仙小说，主角是程序员”。AI 会自动引导你完善世界观。</span></li>
+                      <li><strong className="text-gray-800 dark:text-gray-200 ec:text-ec-text">第二步：确认核心参数</strong><br/><span className="pl-5 block text-xs opacity-80">AI 会询问书名、预计字数等。确认后，这些信息会自动填入“基础设定”面板。</span></li>
+                      <li><strong className="text-gray-800 dark:text-gray-200 ec:text-ec-text">第三步：生成目录</strong><br/><span className="pl-5 block text-xs opacity-80">设定完成后，点击“批量生成目录”或直接发送“生成前20章目录”。</span></li>
+                      <li><strong className="text-gray-800 dark:text-gray-200 ec:text-ec-text">第四步：撰写正文</strong><br/><span className="pl-5 block text-xs opacity-80">目录生成后，使用右下角的“批量撰写”按钮，或直接对 AI 说“写第一章”。</span></li>
+                    </ol>
+                  </section>
+
+                  <section>
+                    <h4 className="font-bold text-gray-900 dark:text-white ec:text-ec-text mb-3 text-base flex items-center gap-2"><span className="text-xl">✨</span> 核心功能详解</h4>
+                    <div className="space-y-4">
+                        <div>
+                            <h5 className="font-bold text-indigo-600 dark:text-indigo-400 ec:text-ec-accent mb-1">📋 基础设定 & 数据库</h5>
+                            <p className="text-xs opacity-80 leading-relaxed">系统会自动识别对话中的设定内容（如“## 角色档案”），并将其归档到右侧面板。你可以随时在对话中补充设定，如“增加一个反派角色叫张三”。</p>
+                        </div>
+                        <div>
+                            <h5 className="font-bold text-indigo-600 dark:text-indigo-400 ec:text-ec-accent mb-1">📚 章节正文与编辑</h5>
+                            <p className="text-xs opacity-80 leading-relaxed">生成的正文会自动提取到“章节正文”卡片中。你可以：</p>
+                            <ul className="list-disc list-inside text-xs opacity-80 pl-2 mt-1 space-y-1">
+                                <li>点击 <EditIcon/> 图标直接在弹窗中修改正文内容。</li>
+                                <li>点击 <SparklesIcon/> 进行局部润色或全文优化。</li>
+                                <li>点击 <SpeakerIcon/> 朗读章节（支持男女声切换和倍速）。</li>
+                            </ul>
+                        </div>
+                    </div>
+                  </section>
+
+                  <section>
+                    <h4 className="font-bold text-gray-900 dark:text-white ec:text-ec-text mb-3 text-base flex items-center gap-2"><span className="text-xl">🔥</span> 进阶技巧</h4>
+                    <div className="bg-indigo-50 dark:bg-indigo-900/20 ec:bg-ec-surface border border-indigo-100 dark:border-indigo-800 ec:border-ec-border rounded-lg p-4 space-y-3">
+                        <div>
+                            <strong className="block text-indigo-700 dark:text-indigo-300 ec:text-ec-text mb-1">⚓ 剧情锚点 (长文神器)</strong>
+                            <p className="text-xs opacity-80">当对话过长（超过50轮）时，AI 可能会遗忘前文。点击顶部的 **“剧情锚点”** 按钮，系统会将当前剧情压缩成一个“存档点”，释放 Token 空间，确保 AI 长期记忆不丢失。</p>
+                        </div>
+                        <div>
+                            <strong className="block text-indigo-700 dark:text-indigo-300 ec:text-ec-text mb-1">🏗️ 小说拆解 / 仿写</strong>
+                            <p className="text-xs opacity-80">在“图书库”中，你可以输入一本知名小说的书名或链接。AI 会深度分析其节奏、爽点和文风，并基于此风格为你创建新的大纲。</p>
+                        </div>
+                    </div>
+                  </section>
+
+                  <section>
+                     <h4 className="font-bold text-gray-900 dark:text-white ec:text-ec-text mb-2 text-base">❓ 常见问题</h4>
+                     <ul className="list-disc list-inside text-xs opacity-80 space-y-1">
+                         <li><strong>生成中断怎么办？</strong> 点击输入框旁的红色停止按钮，然后发送“继续”即可。</li>
+                         <li><strong>如何配置 API？</strong> 点击右上角设置图标，支持 OpenAI 格式及各类中转接口（DeepSeek, Kimi 等）。</li>
+                     </ul>
+                  </section>
+               </div>
+            </div>
+          </div>
+      )}
+
+      {/* Version History Modal */}
+      {isVersionOpen && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fadeIn">
+            <div className="bg-white dark:bg-gray-900 ec:bg-ec-bg border ec:border-ec-border rounded-xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col">
+               <div className="p-4 border-b border-gray-200 dark:border-gray-700 ec:border-ec-border flex justify-between">
+                   <h3 className="font-bold text-gray-900 dark:text-white ec:text-ec-text flex items-center gap-2"><HistoryIcon /> 版本历史 (Changelog)</h3>
+                   <button onClick={() => setIsVersionOpen(false)} className="ec:text-ec-text"><XIcon/></button>
+               </div>
+               <div className="p-6 overflow-y-auto custom-scrollbar">
+                   <div className="relative border-l-2 border-gray-200 dark:border-gray-700 ec:border-ec-border ml-3 space-y-8">
+                       
+                       {/* v1.3.0 */}
+                       <div className="relative pl-6">
+                           <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-green-500 border-4 border-white dark:border-gray-900 ec:border-ec-bg"></div>
+                           <div className="flex flex-col gap-1">
+                               <div className="flex items-center gap-2">
+                                   <h4 className="font-bold text-gray-900 dark:text-white ec:text-ec-text">v1.3.0 - 体验升级版</h4>
+                                   <span className="px-2 py-0.5 bg-green-100 text-green-700 text-[10px] rounded-full font-bold">Latest</span>
+                               </div>
+                               <span className="text-xs text-gray-400 mb-2">2024-05-22</span>
+                               <ul className="text-sm text-gray-600 dark:text-gray-300 ec:text-ec-text space-y-1.5 list-disc list-inside">
+                                   <li>✨ <strong>TTS 朗读升级</strong>：新增朗读暂停/继续功能，支持播放前预设语速和音色（男/女声自动识别）。</li>
+                                   <li>📝 <strong>正文编辑</strong>：现在可以直接在章节卡片中编辑生成的正文内容，修改后自动同步到底层数据。</li>
+                                   <li>👁️ <strong>护眼模式优化</strong>：全面适配“豆沙绿”护眼主题，修复了弹窗和按钮的颜色显示问题。</li>
+                               </ul>
+                           </div>
+                       </div>
+
+                       {/* v1.2.0 */}
+                       <div className="relative pl-6">
+                           <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-indigo-500 border-4 border-white dark:border-gray-900 ec:border-ec-bg"></div>
+                           <div className="flex flex-col gap-1">
+                               <h4 className="font-bold text-gray-900 dark:text-white ec:text-ec-text">v1.2.0 - 创作工具箱</h4>
+                               <span className="text-xs text-gray-400 mb-2">2024-05-15</span>
+                               <ul className="text-sm text-gray-600 dark:text-gray-300 ec:text-ec-text space-y-1.5 list-disc list-inside">
+                                   <li>🏗️ <strong>小说拆解/仿写</strong>：输入目标小说链接或书名，AI 自动分析风格并生成新大纲。</li>
+                                   <li>⚓ <strong>剧情锚点</strong>：解决长文遗忘问题，手动压缩上下文。</li>
+                                   <li>📂 <strong>图书库 (Library)</strong>：支持多本小说管理、删除与重命名。</li>
+                               </ul>
+                           </div>
+                       </div>
+
+                       {/* v1.1.0 */}
+                       <div className="relative pl-6">
+                           <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 ec:bg-ec-border border-4 border-white dark:border-gray-900 ec:border-ec-bg"></div>
+                           <div className="flex flex-col gap-1">
+                               <h4 className="font-bold text-gray-900 dark:text-white ec:text-ec-text">v1.1.0 - 批量生成</h4>
+                               <span className="text-xs text-gray-400 mb-2">2024-05-01</span>
+                               <ul className="text-sm text-gray-600 dark:text-gray-300 ec:text-ec-text space-y-1.5 list-disc list-inside">
+                                   <li>⚡ <strong>批量操作</strong>：支持批量生成目录 (ToC) 和批量撰写正文。</li>
+                                   <li>💾 <strong>导出功能</strong>：支持导出为 TXT, Markdown, Word 格式。</li>
+                                   <li>🎨 <strong>界面优化</strong>：引入左右分屏、纯对话、纯阅读三种视图模式。</li>
+                               </ul>
+                           </div>
+                       </div>
+
+                       {/* v1.0.0 */}
+                       <div className="relative pl-6">
+                           <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 ec:bg-ec-border border-4 border-white dark:border-gray-900 ec:border-ec-bg"></div>
+                           <div className="flex flex-col gap-1">
+                               <h4 className="font-bold text-gray-900 dark:text-white ec:text-ec-text">v1.0.0 - 初始发布</h4>
+                               <span className="text-xs text-gray-400 mb-2">2024-04-10</span>
+                               <p className="text-sm text-gray-600 dark:text-gray-300 ec:text-ec-text">
+                                   基于 LLM 的交互式小说生成器诞生。支持基础的对话设定、数据库自动提取和正文生成。
+                               </p>
+                           </div>
+                       </div>
+
+                   </div>
+               </div>
+            </div>
+          </div>
+      )}
     </div>
   );
 }

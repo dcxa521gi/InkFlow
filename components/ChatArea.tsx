@@ -105,11 +105,11 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900/50 relative">
+    <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900/50 ec:bg-ec-surface relative transition-colors">
       {/* Messages List */}
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
         {messages.length === 0 && (
-          <div className="h-full flex flex-col items-center justify-center text-gray-400 dark:text-gray-500 opacity-60">
+          <div className="h-full flex flex-col items-center justify-center text-gray-400 dark:text-gray-500 ec:text-ec-text opacity-60">
              <div className="text-6xl mb-4">✒️</div>
              <p>开始构思你的小说吧...</p>
           </div>
@@ -123,8 +123,8 @@ const ChatArea: React.FC<ChatAreaProps> = ({
             <div 
               className={`max-w-[85%] rounded-2xl px-5 py-3.5 shadow-sm relative group ${
                 msg.role === 'user' 
-                  ? 'bg-indigo-600 text-white rounded-br-none' 
-                  : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-bl-none border border-gray-200 dark:border-gray-700'
+                  ? 'bg-indigo-600 text-white rounded-br-none ec:bg-ec-accent' 
+                  : 'bg-white dark:bg-gray-800 ec:bg-ec-bg text-gray-800 dark:text-gray-200 ec:text-ec-text rounded-bl-none border border-gray-200 dark:border-gray-700 ec:border-ec-border'
               }`}
             >
               {editingId === msg.id ? (
@@ -132,7 +132,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
                       <textarea 
                         value={editContent}
                         onChange={(e) => setEditContent(e.target.value)}
-                        className="w-full h-32 p-2 text-sm bg-gray-100 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 text-gray-900 dark:text-gray-100"
+                        className="w-full h-32 p-2 text-sm bg-gray-100 dark:bg-gray-900 ec:bg-ec-surface border border-gray-300 dark:border-gray-600 ec:border-ec-border rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 text-gray-900 dark:text-gray-100 ec:text-ec-text"
                       />
                       <div className="flex justify-end gap-2">
                           <button onClick={cancelEdit} className="px-2 py-1 text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">取消</button>
@@ -143,7 +143,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
                 <div className={`text-sm leading-relaxed prose prose-sm max-w-none 
                     ${msg.role === 'user' 
                         ? 'prose-invert text-white' 
-                        : 'text-gray-800 dark:text-gray-200 dark:prose-invert dark:prose-headings:text-gray-100 dark:prose-p:text-gray-300 dark:prose-strong:text-white dark:prose-blockquote:text-gray-400 dark:prose-code:text-pink-300'
+                        : 'text-gray-800 dark:text-gray-200 ec:text-ec-text dark:prose-invert ec:prose-eyecare dark:prose-headings:text-gray-100 dark:prose-p:text-gray-300 dark:prose-strong:text-white dark:prose-blockquote:text-gray-400 dark:prose-code:text-pink-300'
                     }`}>
                     <ReactMarkdown
                         remarkPlugins={[remarkGfm, remarkBreaks]}
@@ -203,7 +203,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
                   <button
                     key={idx}
                     onClick={() => onSend(option)}
-                    className="bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 text-xs px-3 py-1.5 rounded-full hover:bg-indigo-100 dark:hover:bg-indigo-800 transition-colors shadow-sm"
+                    className="bg-indigo-50 dark:bg-indigo-900/30 ec:bg-white border border-indigo-200 dark:border-indigo-800 ec:border-ec-border text-indigo-700 dark:text-indigo-300 ec:text-ec-text text-xs px-3 py-1.5 rounded-full hover:bg-indigo-100 dark:hover:bg-indigo-800 ec:hover:bg-ec-hover transition-colors shadow-sm"
                   >
                       {option}
                   </button>
@@ -212,18 +212,18 @@ const ChatArea: React.FC<ChatAreaProps> = ({
       )}
 
       {/* Input Area */}
-      <div className="p-4 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 shrink-0">
+      <div className="p-4 bg-white dark:bg-gray-900 ec:bg-ec-bg border-t border-gray-200 dark:border-gray-800 ec:border-ec-border shrink-0 transition-colors">
         <div className="relative max-w-4xl mx-auto flex flex-col gap-2">
             
             {/* Input Toolbar */}
             <div className="flex justify-between items-center px-1">
-                 <div className="text-[10px] text-gray-400 dark:text-gray-500">
+                 <div className="text-[10px] text-gray-400 dark:text-gray-500 ec:text-ec-text opacity-70">
                      {isStreaming ? '正在生成...' : 'Ready'}
                  </div>
                  {!isStreaming && messages.length > 2 && (
                      <button 
                         onClick={onSummarize}
-                        className="flex items-center gap-1 text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors"
+                        className="flex items-center gap-1 text-xs text-indigo-600 dark:text-indigo-400 ec:text-ec-accent hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors"
                         title="生成当前对话摘要"
                      >
                          <SparklesIcon /> 总结对话
@@ -239,7 +239,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
                     onKeyDown={handleKeyDown}
                     placeholder={isStreaming ? "AI 正在创作中..." : placeholderText}
                     disabled={isStreaming}
-                    className="flex-1 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 border border-gray-200 dark:border-gray-700 rounded-xl px-5 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                    className="flex-1 bg-gray-100 dark:bg-gray-800 ec:bg-ec-surface text-gray-900 dark:text-white ec:text-ec-text placeholder-gray-500 border border-gray-200 dark:border-gray-700 ec:border-ec-border rounded-xl px-5 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 />
                 {isStreaming ? (
                     <button
@@ -255,8 +255,8 @@ const ChatArea: React.FC<ChatAreaProps> = ({
                         disabled={!input.trim()}
                         className={`p-3 rounded-xl transition-all ${
                         !input.trim() 
-                            ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed' 
-                            : 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-500/20'
+                            ? 'bg-gray-100 dark:bg-gray-800 ec:bg-ec-surface text-gray-400 dark:text-gray-600 ec:text-gray-400 cursor-not-allowed' 
+                            : 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-500/20 ec:bg-ec-accent'
                         }`}
                     >
                         <SendIcon />
@@ -265,7 +265,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
             </div>
             {/* Character Counter */}
             <div className="flex justify-end pr-1">
-                <span className={`text-[10px] ${inputLength > maxLength ? 'text-red-500 font-bold' : 'text-gray-400 dark:text-gray-600'}`}>
+                <span className={`text-[10px] ${inputLength > maxLength ? 'text-red-500 font-bold' : 'text-gray-400 dark:text-gray-600 ec:text-ec-text opacity-60'}`}>
                     {inputLength} / {maxLength}
                 </span>
             </div>

@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="zh-CN">
   <head>
@@ -11,40 +12,45 @@
         theme: {
           extend: {
             colors: {
-              gray: {
-                // Eye Protection Mode Overrides for Light Mode
-                50: '#F9F5EB',  // Warm White Background
-                100: '#EBE5D5', // Warm Border/Secondary
-                200: '#DCD3C0',
-                300: '#C5BBA5',
-                // Dark Mode grays remain standard
-                750: '#2d3748',
-                800: '#1f2937',
-                850: '#1a202c',
-                900: '#111827',
-                950: '#030712',
+              // Custom colors for Eye-Care Mode (Green Style)
+              'ec': {
+                bg: '#C7EDCC',       // Bean Green (Standard Eye Care)
+                text: '#003300',     // Dark Green text
+                accent: '#2E7D32',   // Forest Green accent
+                border: '#A5D6A7',   // Light Green border
+                surface: '#E0F2F1',  // Very light green surface
+                hover: '#B2DFDB'     // Hover state
               }
             },
             typography: (theme) => ({
               DEFAULT: {
                 css: {
+                  maxWidth: 'none',
                   color: theme('colors.gray.700'),
-                  // Ensure text is readable in eye protection mode
-                  '--tw-prose-body': '#4a4a4a', 
-                  '--tw-prose-headings': '#2d2d2d',
-                  strong: { color: theme('colors.gray.900') },
+                  p: { marginTop: '0.5em', marginBottom: '0.5em' },
                 },
               },
-              dark: {
+              // Eye-Care Prose Configuration
+              eyecare: {
                 css: {
-                  color: theme('colors.gray.300'),
-                  strong: { color: theme('colors.white') },
-                  a: { color: theme('colors.indigo.400') },
-                  code: { color: theme('colors.pink.300') },
-                  'h1, h2, h3, h4': { color: theme('colors.gray.100') },
-                  blockquote: { borderLeftColor: theme('colors.indigo.500'), color: theme('colors.gray.400') },
-                }
-              }
+                  '--tw-prose-body': '#003300',
+                  '--tw-prose-headings': '#1B5E20',
+                  '--tw-prose-lead': '#2E7D32',
+                  '--tw-prose-links': '#1B5E20',
+                  '--tw-prose-bold': '#1B5E20',
+                  '--tw-prose-counters': '#2E7D32',
+                  '--tw-prose-bullets': '#2E7D32',
+                  '--tw-prose-hr': '#A5D6A7',
+                  '--tw-prose-quotes': '#1B5E20',
+                  '--tw-prose-quote-borders': '#A5D6A7',
+                  '--tw-prose-captions': '#2E7D32',
+                  '--tw-prose-code': '#1B5E20',
+                  '--tw-prose-pre-code': '#A5D6A7',
+                  '--tw-prose-pre-bg': '#E0F2F1',
+                  '--tw-prose-th-borders': '#A5D6A7',
+                  '--tw-prose-td-borders': '#A5D6A7',
+                },
+              },
             }),
           },
         },
@@ -69,6 +75,14 @@
       .dark ::-webkit-scrollbar-thumb {
         background: #4b5563;
       }
+      /* Eye-care scrollbar */
+      .ec ::-webkit-scrollbar-thumb {
+        background: #81C784;
+      }
+      .ec ::-webkit-scrollbar-track {
+        background: #E8F5E9;
+      }
+      
       ::-webkit-scrollbar-thumb:hover {
         background: #6b7280; 
       }
@@ -79,6 +93,15 @@
         margin-left: 2px;
       }
       @keyframes blink { 50% { opacity: 0; } }
+      
+      /* Toast Animation */
+      @keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+      }
+      .toast-enter {
+        animation: slideIn 0.3s ease-out forwards;
+      }
     </style>
   <script type="importmap">
 {
@@ -94,7 +117,7 @@
 }
 </script>
 </head>
-  <body class="bg-gray-50 dark:bg-gray-950 text-gray-800 dark:text-gray-100 overflow-hidden h-screen w-screen selection:bg-indigo-500 selection:text-white">
+  <body class="bg-white dark:bg-gray-950 text-gray-800 dark:text-gray-100 overflow-hidden h-screen w-screen selection:bg-indigo-500 selection:text-white transition-colors duration-300">
     <div id="root"></div>
   </body>
 </html>

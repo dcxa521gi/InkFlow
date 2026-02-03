@@ -38,27 +38,27 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fadeIn">
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl w-full max-w-6xl h-[80vh] flex flex-col overflow-hidden">
+      <div className="bg-white dark:bg-gray-900 ec:bg-ec-bg border border-gray-200 dark:border-gray-700 ec:border-ec-border rounded-xl shadow-2xl w-full max-w-6xl h-[80vh] flex flex-col overflow-hidden">
         
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800 ec:border-ec-border bg-gray-50 dark:bg-gray-950 ec:bg-ec-surface">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg text-indigo-600 dark:text-indigo-400">
+            <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 ec:bg-white rounded-lg text-indigo-600 dark:text-indigo-400">
                 <SparklesIcon />
             </div>
             <div>
-                <h2 className="text-lg font-bold text-gray-900 dark:text-white">优化建议对比 (Optimization Review)</h2>
-                <div className="flex items-center gap-2 text-xs text-gray-500">
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white ec:text-ec-text">优化建议对比 (Optimization Review)</h2>
+                <div className="flex items-center gap-2 text-xs text-gray-500 ec:text-ec-text opacity-80">
                     <span>{title}</span>
                     {!isStreaming && (
-                        <span className="flex items-center gap-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full">
+                        <span className="flex items-center gap-1 bg-green-100 dark:bg-green-900/30 ec:bg-white text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full border border-transparent ec:border-ec-border">
                            <EditIcon /> 右侧内容可编辑
                         </span>
                     )}
                 </div>
             </div>
           </div>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-900 dark:hover:text-white">
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-900 dark:hover:text-white ec:text-ec-text">
             <XIcon />
           </button>
         </div>
@@ -66,18 +66,18 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({
         {/* Content Comparison */}
         <div className="flex-1 flex overflow-hidden">
             {/* Old Content (Read Only) */}
-            <div className="flex-1 border-r border-gray-200 dark:border-gray-800 flex flex-col bg-red-50/30 dark:bg-red-900/10 w-1/2">
-                <div className="p-2 text-xs font-bold text-red-600 dark:text-red-400 uppercase tracking-wide border-b border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-gray-900/50 text-center shrink-0">
+            <div className="flex-1 border-r border-gray-200 dark:border-gray-800 ec:border-ec-border flex flex-col bg-red-50/30 dark:bg-red-900/10 ec:bg-red-50/20 w-1/2">
+                <div className="p-2 text-xs font-bold text-red-600 dark:text-red-400 uppercase tracking-wide border-b border-gray-200 dark:border-gray-800 ec:border-ec-border bg-white/50 dark:bg-gray-900/50 ec:bg-white/50 text-center shrink-0">
                     原文 (Original)
                 </div>
-                <div className="flex-1 overflow-y-auto p-4 prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap font-serif leading-relaxed text-gray-700 dark:text-gray-300 select-text">
+                <div className="flex-1 overflow-y-auto p-4 prose prose-sm dark:prose-invert ec:prose-eyecare max-w-none whitespace-pre-wrap font-serif leading-relaxed text-gray-700 dark:text-gray-300 ec:text-ec-text select-text">
                     {oldContent}
                 </div>
             </div>
 
             {/* New Content (Editable) */}
-            <div className="flex-1 flex flex-col bg-green-50/30 dark:bg-green-900/10 w-1/2">
-                <div className="p-2 text-xs font-bold text-green-600 dark:text-green-400 uppercase tracking-wide border-b border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-gray-900/50 text-center shrink-0 flex justify-between px-4 items-center">
+            <div className="flex-1 flex flex-col bg-green-50/30 dark:bg-green-900/10 ec:bg-green-50/20 w-1/2">
+                <div className="p-2 text-xs font-bold text-green-600 dark:text-green-400 uppercase tracking-wide border-b border-gray-200 dark:border-gray-800 ec:border-ec-border bg-white/50 dark:bg-gray-900/50 ec:bg-white/50 text-center shrink-0 flex justify-between px-4 items-center">
                     <span>优化后 (New Version) - 可编辑</span>
                     {isStreaming && <span className="animate-pulse">生成中...</span>}
                 </div>
@@ -87,7 +87,7 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({
                         value={localContent}
                         onChange={(e) => setLocalContent(e.target.value)}
                         disabled={isStreaming}
-                        className="w-full h-full p-4 bg-transparent border-none resize-none focus:ring-0 focus:outline-none font-serif leading-relaxed text-gray-900 dark:text-gray-100 text-sm overflow-y-auto"
+                        className="w-full h-full p-4 bg-transparent border-none resize-none focus:ring-0 focus:outline-none font-serif leading-relaxed text-gray-900 dark:text-gray-100 ec:text-ec-text text-sm overflow-y-auto"
                         placeholder="AI 生成的内容将显示在这里。生成结束后，你可以自由编辑这里的内容，保留你满意的部分..."
                     />
                 </div>
@@ -95,13 +95,13 @@ const ComparisonModal: React.FC<ComparisonModalProps> = ({
         </div>
 
         {/* Footer Actions */}
-        <div className="p-4 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex justify-end gap-3 items-center">
-            <span className="text-xs text-gray-400 mr-auto hidden sm:block">
+        <div className="p-4 border-t border-gray-200 dark:border-gray-800 ec:border-ec-border bg-white dark:bg-gray-900 ec:bg-ec-surface flex justify-end gap-3 items-center">
+            <span className="text-xs text-gray-400 ec:text-ec-text opacity-70 mr-auto hidden sm:block">
                 提示：请在右侧编辑框中删除多余的选项或废话，确认后将替换原文。
             </span>
             <button 
                 onClick={onClose}
-                className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 ec:text-ec-text bg-gray-100 dark:bg-gray-800 ec:bg-white hover:bg-gray-200 dark:hover:bg-gray-700 ec:hover:bg-ec-hover rounded-lg transition-colors"
             >
                 取消 (保留原文)
             </button>

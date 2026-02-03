@@ -56,20 +56,20 @@ const LibraryModal: React.FC<LibraryModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fadeIn">
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl w-full max-w-5xl h-[700px] max-h-[90vh] overflow-hidden flex flex-col transition-colors">
+      <div className="bg-white dark:bg-gray-900 ec:bg-ec-bg border border-gray-200 dark:border-gray-700 ec:border-ec-border rounded-xl shadow-2xl w-full max-w-5xl h-[700px] max-h-[90vh] overflow-hidden flex flex-col transition-colors">
         
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 shrink-0">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-800 ec:border-ec-border bg-gray-50 dark:bg-gray-900 ec:bg-ec-surface shrink-0">
           <div className="flex items-center gap-2">
-             <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg text-indigo-600 dark:text-indigo-400">
+             <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 ec:bg-white rounded-lg text-indigo-600 dark:text-indigo-400">
                  <BookOpenIcon />
              </div>
              <div>
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white">创作中心 (Workspace)</h2>
-                <p className="text-xs text-gray-500">管理小说与灵感拆解</p>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white ec:text-ec-text">创作中心 (Workspace)</h2>
+                <p className="text-xs text-gray-500 ec:text-ec-text opacity-70">管理小说与灵感拆解</p>
              </div>
           </div>
-          <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+          <button onClick={onClose} className="text-gray-500 dark:text-gray-400 ec:text-ec-text hover:text-gray-900 dark:hover:text-white transition-colors">
             <XIcon />
           </button>
         </div>
@@ -78,17 +78,17 @@ const LibraryModal: React.FC<LibraryModalProps> = ({
         <div className="flex flex-1 overflow-hidden">
             
             {/* Left: Novel List */}
-            <div className="flex-1 overflow-y-auto p-6 bg-gray-50 dark:bg-gray-950 border-r border-gray-200 dark:border-gray-800">
+            <div className="flex-1 overflow-y-auto p-6 bg-gray-50 dark:bg-gray-950 ec:bg-ec-bg border-r border-gray-200 dark:border-gray-800 ec:border-ec-border">
                 <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-bold text-gray-700 dark:text-gray-300">我的作品</h3>
-                    <span className="text-xs text-gray-500">{novels.length} 本书</span>
+                    <h3 className="font-bold text-gray-700 dark:text-gray-300 ec:text-ec-text">我的作品</h3>
+                    <span className="text-xs text-gray-500 ec:text-ec-text">{novels.length} 本书</span>
                 </div>
 
                 <div className="grid gap-3">
                     {/* Create New Card */}
                     <button 
                         onClick={onCreateNovel}
-                        className="flex items-center justify-center p-4 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl hover:border-indigo-500 dark:hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-gray-500 hover:text-indigo-600 transition-all gap-2 group w-full"
+                        className="flex items-center justify-center p-4 border-2 border-dashed border-gray-300 dark:border-gray-700 ec:border-ec-border rounded-xl hover:border-indigo-500 dark:hover:border-indigo-500 ec:hover:border-ec-accent hover:bg-indigo-50 dark:hover:bg-indigo-900/20 ec:hover:bg-ec-surface text-gray-500 ec:text-ec-text hover:text-indigo-600 transition-all gap-2 group w-full"
                     >
                         <PlusIcon />
                         <span className="font-medium text-sm">新建空白小说</span>
@@ -105,8 +105,8 @@ const LibraryModal: React.FC<LibraryModalProps> = ({
                                 onClick={() => onSelectNovel(novel.id)}
                                 className={`relative flex items-center justify-between p-4 border rounded-xl cursor-pointer transition-all shadow-sm group
                                     ${isActive 
-                                        ? 'bg-white dark:bg-gray-900 border-indigo-500 ring-1 ring-indigo-500' 
-                                        : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 hover:border-indigo-300 dark:hover:border-indigo-700'
+                                        ? 'bg-white dark:bg-gray-900 ec:bg-ec-surface border-indigo-500 ec:border-ec-accent ring-1 ring-indigo-500 ec:ring-ec-accent' 
+                                        : 'bg-white dark:bg-gray-900 ec:bg-ec-surface border-gray-200 dark:border-gray-800 ec:border-ec-border hover:border-indigo-300 dark:hover:border-indigo-700 ec:hover:border-ec-accent'
                                     }
                                 `}
                             >
@@ -117,14 +117,14 @@ const LibraryModal: React.FC<LibraryModalProps> = ({
                                                 type="text" 
                                                 value={editName}
                                                 onChange={(e) => setEditName(e.target.value)}
-                                                className="w-full px-2 py-1 text-sm border rounded dark:bg-gray-800 dark:border-gray-700 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                                className="w-full px-2 py-1 text-sm border rounded dark:bg-gray-800 dark:border-gray-700 ec:bg-white ec:border-ec-border focus:outline-none focus:ring-1 focus:ring-indigo-500"
                                                 autoFocus
                                             />
                                             <button onClick={(e) => saveEditing(e, novel.id)} className="text-xs bg-indigo-600 text-white px-2 py-1 rounded">确定</button>
                                         </div>
                                     ) : (
                                         <div className="flex items-center gap-2 group/title">
-                                            <h3 className={`font-bold text-base truncate ${isActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-900 dark:text-white'}`}>
+                                            <h3 className={`font-bold text-base truncate ${isActive ? 'text-indigo-600 dark:text-indigo-400 ec:text-ec-accent' : 'text-gray-900 dark:text-white ec:text-ec-text'}`}>
                                                 {novel.title}
                                             </h3>
                                             <button 
@@ -135,7 +135,7 @@ const LibraryModal: React.FC<LibraryModalProps> = ({
                                             </button>
                                         </div>
                                     )}
-                                    <div className="flex items-center gap-3 mt-2 text-xs text-gray-500 dark:text-gray-400">
+                                    <div className="flex items-center gap-3 mt-2 text-xs text-gray-500 dark:text-gray-400 ec:text-ec-text opacity-70">
                                         <span>字数: {(wordCount/10000).toFixed(1)}万</span>
                                         <span>更新: {new Date(novel.lastModified).toLocaleDateString()}</span>
                                     </div>
@@ -144,7 +144,7 @@ const LibraryModal: React.FC<LibraryModalProps> = ({
                                 {/* Fixed Delete Button Z-index and Click Handling */}
                                 <button
                                     onClick={(e) => handleDelete(e, novel.id, novel.title)}
-                                    className="relative z-10 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                                    className="relative z-10 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 ec:hover:bg-ec-hover rounded-lg transition-colors opacity-0 group-hover:opacity-100"
                                     title="删除小说"
                                 >
                                     <TrashIcon />
@@ -156,38 +156,38 @@ const LibraryModal: React.FC<LibraryModalProps> = ({
             </div>
 
             {/* Right: Deconstruction / Tools */}
-            <div className="w-[350px] bg-white dark:bg-gray-900 p-6 flex flex-col gap-6">
+            <div className="w-[350px] bg-white dark:bg-gray-900 ec:bg-ec-surface p-6 flex flex-col gap-6">
                  <div>
-                     <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                     <h3 className="font-bold text-gray-900 dark:text-white ec:text-ec-text flex items-center gap-2">
                          <SparklesIcon /> 小说拆解 / 仿写
                      </h3>
-                     <p className="text-xs text-gray-500 mt-2 leading-relaxed">
+                     <p className="text-xs text-gray-500 ec:text-ec-text opacity-70 mt-2 leading-relaxed">
                          不知道怎么开头？输入番茄、起点等网站的小说链接或书名。AI 将分析其题材、节奏、爽点和文风，并基于该风格为您创建新的大纲。
                      </p>
                  </div>
 
                  <div className="flex-1 flex flex-col gap-4">
                      <div className="space-y-2">
-                         <label className="text-xs font-bold text-gray-600 dark:text-gray-400 uppercase">目标小说 (链接/书名)</label>
+                         <label className="text-xs font-bold text-gray-600 dark:text-gray-400 ec:text-ec-text uppercase">目标小说 (链接/书名)</label>
                          <textarea 
                             value={deconstructInput}
                             onChange={(e) => setDeconstructInput(e.target.value)}
                             placeholder="例如：\n《诡秘之主》\n或者\nhttps://fanqienovel.com/..."
-                            className="w-full h-32 p-3 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none resize-none"
+                            className="w-full h-32 p-3 text-sm bg-gray-50 dark:bg-gray-800 ec:bg-white border border-gray-200 dark:border-gray-700 ec:border-ec-border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none resize-none ec:text-ec-text"
                          />
                      </div>
                      
                      <button 
                         onClick={handleDeconstruct}
                         disabled={!deconstructInput.trim()}
-                        className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold shadow-lg shadow-indigo-500/20 transition-all disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2"
+                        className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 ec:bg-ec-accent text-white rounded-xl font-bold shadow-lg shadow-indigo-500/20 transition-all disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2"
                      >
                          <SparklesIcon /> 开始拆解并创建
                      </button>
                      
-                     <div className="mt-auto p-4 bg-yellow-50 dark:bg-yellow-900/10 rounded-lg border border-yellow-100 dark:border-yellow-800/30">
-                         <h4 className="text-xs font-bold text-yellow-800 dark:text-yellow-500 mb-1">💡 提示</h4>
-                         <p className="text-[10px] text-yellow-700 dark:text-yellow-600">
+                     <div className="mt-auto p-4 bg-yellow-50 dark:bg-yellow-900/10 ec:bg-white rounded-lg border border-yellow-100 dark:border-yellow-800/30 ec:border-ec-border">
+                         <h4 className="text-xs font-bold text-yellow-800 dark:text-yellow-500 ec:text-ec-text mb-1">💡 提示</h4>
+                         <p className="text-[10px] text-yellow-700 dark:text-yellow-600 ec:text-ec-text opacity-80">
                              AI 会根据您提供的目标进行深度分析，自动生成"风格设定"并填入系统提示词中，帮助您写出纯正的"番茄味"或"起点风"。
                          </p>
                      </div>

@@ -622,7 +622,7 @@ const NovelView: React.FC<NovelViewProps> = ({
                      <div key={chapter.id} className={`bg-gray-50 dark:bg-gray-900 ec:bg-ec-surface border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow ${isSpeaking ? 'border-indigo-500 ring-1 ring-indigo-500' : 'border-gray-200 dark:border-gray-800 ec:border-ec-border'}`}>
                          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-800 ec:border-ec-border bg-white dark:bg-gray-900/50 ec:bg-ec-surface cursor-pointer select-none" onClick={() => toggleExpand(chapter.id)}>
                              <div className="flex items-center gap-2">
-                                <button className="text-gray-400 dark:text-gray-500 ec:text-ec-text hover:text-indigo-600 dark:hover:text-indigo-400">{isExpanded ? <ChevronDownIcon /> : <ChevronUpIcon />}</button>
+                                <button className="text-gray-400 dark:text-gray-500 ec:text-ec-text hover:text-indigo-600 dark:hover:text-indigo-400">{isExpanded ? <ChevronUpIcon /> : <ChevronDownIcon />}</button>
                                 <div><h3 className="font-bold text-gray-900 dark:text-gray-100 ec:text-ec-text text-sm md:text-base">{chapter.title}</h3><p className="text-[10px] text-gray-400 ec:text-ec-text opacity-60 mt-0.5">字数: {chapter.wordCount}</p></div>
                              </div>
                              <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>

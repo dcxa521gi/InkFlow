@@ -27,7 +27,7 @@ const NovelView: React.FC<NovelViewProps> = ({
     isGenerating,
     onMessageEdit
 }) => {
-  const [activeTab, setActiveTab] = useState<NovelTab>('settings');
+  const [activeTab, setActiveTab] = useState<NovelTab>('chapters'); // Default to chapters tab
   const [copyStatus, setCopyStatus] = useState('复制');
   const [customToCCount, setCustomToCCount] = useState<string>('');
   const [customContentCount, setCustomContentCount] = useState<string>('');
@@ -39,7 +39,8 @@ const NovelView: React.FC<NovelViewProps> = ({
   const [selectionRect, setSelectionRect] = useState<{top: number, left: number} | null>(null);
   const [selectedText, setSelectedText] = useState('');
   
-  const [collapsedChapters, setCollapsedChapters] = useState<Set<string>>(new Set());
+  // Use expandedChapters logic (Default Collapsed)
+  const [expandedChapters, setExpandedChapters] = useState<Set<string>>(new Set());
 
   // --- Editing State ---
   const [editingChapter, setEditingChapter] = useState<{
@@ -270,6 +271,20 @@ const NovelView: React.FC<NovelViewProps> = ({
     return parsedSections.some(s => /目录|Table of Contents|Chapter List|章节列表|Outline|Structure|章节安排|Detailed ToC/i.test(s.title));
   }, [parsedSections]);
 
+  // Auto-expand the latest chapter if generating or speaking
+  useEffect(() => {
+      if ((isGenerating || speakingChapterId) && chapters.length > 0) {
+          const latest = chapters[chapters.length - 1];
+          // If speaking, expand the one being spoken
+          if (speakingChapterId) {
+             setExpandedChapters(prev => new Set(prev).add(speakingChapterId));
+          } else {
+             // If generating, expand the latest one
+             setExpandedChapters(prev => new Set(prev).add(latest.id));
+          }
+      }
+  }, [isGenerating, chapters.length, speakingChapterId]);
+
   // --- TTS Functions ---
 
   const processQueue = () => {
@@ -401,8 +416,8 @@ const NovelView: React.FC<NovelViewProps> = ({
       URL.revokeObjectURL(url);
   };
 
-  const toggleCollapse = (chapterId: string) => {
-      setCollapsedChapters(prev => {
+  const toggleExpand = (chapterId: string) => {
+      setExpandedChapters(prev => {
           const next = new Set(prev);
           if (next.has(chapterId)) next.delete(chapterId);
           else next.add(chapterId);
@@ -410,12 +425,12 @@ const NovelView: React.FC<NovelViewProps> = ({
       });
   };
 
-  const toggleCollapseAll = () => {
-      if (collapsedChapters.size === chapters.length) setCollapsedChapters(new Set());
-      else setCollapsedChapters(new Set(chapters.map(c => c.id)));
+  const toggleExpandAll = () => {
+      if (expandedChapters.size === chapters.length) setExpandedChapters(new Set());
+      else setExpandedChapters(new Set(chapters.map(c => c.id)));
   };
 
-  const isAllCollapsed = chapters.length > 0 && collapsedChapters.size === chapters.length;
+  const isAllExpanded = chapters.length > 0 && expandedChapters.size === chapters.length;
 
   const handleMouseUp = () => {
     const selection = window.getSelection();
@@ -482,10 +497,6 @@ const NovelView: React.FC<NovelViewProps> = ({
           // Find the original message
           const originalMessage = messages.find(m => m.id === editingChapter.messageId);
           if (originalMessage) {
-              // Replace content. Note: this uses simple string replacement.
-              // It relies on originalContent being exactly as it is in the message content.
-              // Since 'chapter.content' comes from parsedSections which does some trimming, 
-              // we might need to be careful. Ideally we replace the first occurrence.
               const newFullContent = originalMessage.content.replace(editingChapter.originalContent, editingChapter.content);
               onMessageEdit(editingChapter.messageId, newFullContent);
           }
@@ -553,8 +564,8 @@ const NovelView: React.FC<NovelViewProps> = ({
         
         <div className="flex items-center gap-2 mb-1 mr-2 relative">
              {activeTab === 'chapters' && chapters.length > 0 && (
-                <button onClick={toggleCollapseAll} className="text-xs flex items-center gap-1 px-2 py-1 bg-white dark:bg-gray-800 ec:bg-ec-surface hover:bg-gray-100 dark:hover:bg-gray-700 ec:hover:bg-ec-bg text-gray-600 dark:text-gray-300 ec:text-ec-text rounded border border-gray-200 dark:border-gray-700 ec:border-ec-border shadow-sm transition-colors" title={isAllCollapsed ? "全部展开" : "全部折叠"}>
-                    {isAllCollapsed ? <><ChevronDownIcon /> 展开</> : <><ChevronUpIcon /> 折叠</>}
+                <button onClick={toggleExpandAll} className="text-xs flex items-center gap-1 px-2 py-1 bg-white dark:bg-gray-800 ec:bg-ec-surface hover:bg-gray-100 dark:hover:bg-gray-700 ec:hover:bg-ec-bg text-gray-600 dark:text-gray-300 ec:text-ec-text rounded border border-gray-200 dark:border-gray-700 ec:border-ec-border shadow-sm transition-colors" title={isAllExpanded ? "全部折叠" : "全部展开"}>
+                    {isAllExpanded ? <><ChevronUpIcon /> 折叠</> : <><ChevronDownIcon /> 展开</>}
                 </button>
              )}
              <div className="relative" ref={downloadMenuRef}>
@@ -604,13 +615,14 @@ const NovelView: React.FC<NovelViewProps> = ({
                      <div className="text-center py-20 text-gray-500 dark:text-gray-500 ec:text-ec-text opacity-70"><div className="text-4xl mb-2">📚</div><p>暂无正文章节</p><p className="text-xs mt-2">请使用下方工具生成目录和正文。</p></div>
                  )}
                  {chapters.map((chapter) => {
-                     const isCollapsed = collapsedChapters.has(chapter.id);
+                     // Inverted logic: expandedChapters instead of collapsedChapters
+                     const isExpanded = expandedChapters.has(chapter.id);
                      const isSpeaking = speakingChapterId === chapter.id;
                      return (
                      <div key={chapter.id} className={`bg-gray-50 dark:bg-gray-900 ec:bg-ec-surface border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow ${isSpeaking ? 'border-indigo-500 ring-1 ring-indigo-500' : 'border-gray-200 dark:border-gray-800 ec:border-ec-border'}`}>
-                         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-800 ec:border-ec-border bg-white dark:bg-gray-900/50 ec:bg-ec-surface cursor-pointer select-none" onClick={() => toggleCollapse(chapter.id)}>
+                         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-800 ec:border-ec-border bg-white dark:bg-gray-900/50 ec:bg-ec-surface cursor-pointer select-none" onClick={() => toggleExpand(chapter.id)}>
                              <div className="flex items-center gap-2">
-                                <button className="text-gray-400 dark:text-gray-500 ec:text-ec-text hover:text-indigo-600 dark:hover:text-indigo-400">{isCollapsed ? <ChevronDownIcon /> : <ChevronUpIcon />}</button>
+                                <button className="text-gray-400 dark:text-gray-500 ec:text-ec-text hover:text-indigo-600 dark:hover:text-indigo-400">{isExpanded ? <ChevronDownIcon /> : <ChevronUpIcon />}</button>
                                 <div><h3 className="font-bold text-gray-900 dark:text-gray-100 ec:text-ec-text text-sm md:text-base">{chapter.title}</h3><p className="text-[10px] text-gray-400 ec:text-ec-text opacity-60 mt-0.5">字数: {chapter.wordCount}</p></div>
                              </div>
                              <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
@@ -674,7 +686,7 @@ const NovelView: React.FC<NovelViewProps> = ({
                                  <button onClick={() => handleDownloadChapter(chapter.title, chapter.content)} className="p-1.5 text-xs text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 ec:hover:bg-ec-surface rounded" title="下载本章">⬇️</button>
                              </div>
                          </div>
-                         {!isCollapsed && (
+                         {isExpanded && (
                              <div className="p-5 prose dark:prose-invert ec:prose-eyecare prose-indigo max-w-none text-sm leading-7 md:text-base md:leading-8 dark:prose-headings:text-gray-100 dark:prose-p:text-gray-300 animate-fadeIn">
                                 <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>{chapter.content}</ReactMarkdown>
                              </div>

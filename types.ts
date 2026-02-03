@@ -16,6 +16,13 @@ export interface MCPItem {
   isActive: boolean;
 }
 
+export interface AnchorConfig {
+  enabled: boolean;
+  mode: 'volume' | 'chapter';
+  chapterInterval: 20 | 50; // Every 20 or 50 chapters
+  nextTrigger: number; // The chapter number that triggers the next anchor
+}
+
 export interface AppSettings {
   // Common
   provider: AIProvider;
@@ -78,6 +85,7 @@ export interface NovelSession {
   messages: Message[];
   settings: AppSettings;
   contextSummary?: string; // For "Segmented Anchoring" (分段锚定法) - stores the summary of previous volumes/chapters
+  anchorConfig?: AnchorConfig; // Auto-anchor settings
 }
 
 export interface OptimizationState {

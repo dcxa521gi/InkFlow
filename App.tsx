@@ -5,8 +5,9 @@ import NovelView from './components/NovelView';
 import SettingsModal from './components/SettingsModal';
 import LibraryModal from './components/LibraryModal';
 import ComparisonModal from './components/ComparisonModal';
+import AnchorModal from './components/AnchorModal';
 import { generateStreamResponse } from './services/aiService';
-import { Message, AppSettings, ViewMode, NovelSession, OptimizationState } from './types';
+import { Message, AppSettings, ViewMode, NovelSession, OptimizationState, AnchorConfig } from './types';
 import { DEFAULT_SETTINGS } from './constants';
 import { SettingsIcon, BookOpenIcon, MessageSquareIcon, MailIcon, SunIcon, MoonIcon, EyeIcon, XIcon, LibraryIcon, HelpCircleIcon, HistoryIcon, EditIcon, SparklesIcon, SpeakerIcon } from './components/Icons';
 
@@ -36,7 +37,8 @@ const createDefaultNovel = (): NovelSession => ({
     content: '你好！我是你的 AI 小说创作助手。\n\n我们将分三步完成创作：\n1. **确认基础设定**（书名、题材、故事线）。\n2. **生成数据库**（大纲、角色）。\n3. **生成正文**。\n\n请告诉我你想写什么类型的故事？\n\nOptions: [玄幻修仙] [赛博朋克] [都市异能]',
     timestamp: Date.now()
   }],
-  settings: { ...DEFAULT_SETTINGS }
+  settings: { ...DEFAULT_SETTINGS },
+  anchorConfig: { enabled: false, mode: 'chapter', chapterInterval: 20, nextTrigger: 20 }
 });
 
 // Toast Component
@@ -70,7 +72,8 @@ function App() {
                 createdAt: Date.now(),
                 lastModified: Date.now(),
                 messages: msgs,
-                settings: oldSettings ? JSON.parse(oldSettings) : DEFAULT_SETTINGS
+                settings: oldSettings ? JSON.parse(oldSettings) : DEFAULT_SETTINGS,
+                anchorConfig: { enabled: false, mode: 'chapter', chapterInterval: 20, nextTrigger: 20 }
             };
             return [initialNovel];
         }
@@ -132,6 +135,7 @@ function App() {
   const [isContactOpen, setIsContactOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isVersionOpen, setIsVersionOpen] = useState(false);
+  const [isAnchorModalOpen, setIsAnchorModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>(ViewMode.Split);
   const [optState, setOptState] = useState<OptimizationState | null>(null);
 
@@ -201,17 +205,16 @@ function App() {
   
   const updateSettings = (newSettings: AppSettings) => { updateActiveNovel({ settings: newSettings }); };
 
-  const handleAnchorContext = async () => {
-      if (isStreaming) {
-          showToast("AI 正在生成中，请稍后再试", "error");
-          return;
-      }
-      if (messages.length < 5) {
-          showToast("对话内容太少，暂无需构建锚点", "info");
-          return;
-      }
+  // --- Logic for Anchor ---
 
-      showToast("正在启动剧情锚定程序...", "info");
+  // Generalized Anchor execution function
+  const executeAnchor = async (currentHistory: Message[] = messages, silent: boolean = false): Promise<Message[]> => {
+      if (isStreaming && !silent) {
+          showToast("AI 正在生成中，请稍后再试", "error");
+          return currentHistory;
+      }
+      
+      if (!silent) showToast("正在启动剧情锚定程序...", "info");
 
       setIsStreaming(true);
       const prompt = `【系统指令：分段锚定/卷末总结】
@@ -230,14 +233,17 @@ function App() {
 
       const anchorMsgId = 'anchor-req-' + Date.now();
       const userMsg: Message = { id: anchorMsgId, role: 'user', content: prompt, timestamp: Date.now() };
-      let currentHistory = [...messages, userMsg];
+      let tempHistory = [...currentHistory, userMsg];
+      
       const aiMsgId = 'anchor-res-' + Date.now();
       const placeholder: Message = { id: aiMsgId, role: 'model', content: '', timestamp: Date.now() + 1 };
-      updateMessages([...currentHistory, placeholder]);
+      
+      // Update UI to show anchor process
+      updateMessages([...tempHistory, placeholder]);
 
       try {
           let summary = "";
-          await generateStreamResponse(currentHistory, prompt, settings, activeNovel.contextSummary, (chunk) => {
+          await generateStreamResponse(tempHistory, prompt, settings, activeNovel.contextSummary, (chunk) => {
               summary += chunk;
               setNovels(prev => prev.map(n => {
                   if (n.id === activeNovel.id) {
@@ -259,16 +265,26 @@ function App() {
               timestamp: Date.now()
           };
           
-          const newMessages = [...messages, systemNotice];
-          setNovels(prev => prev.map(n => n.id === activeNovel.id ? { ...n, messages: newMessages, contextSummary: finalSummary, lastModified: Date.now() } : n));
-          showToast("剧情锚点构建成功！历史记录已保留。", "success");
+          const finalMessages = [...currentHistory, userMsg, { ...placeholder, content: finalSummary }, systemNotice];
+          
+          // Update the session state
+          setNovels(prev => prev.map(n => n.id === activeNovel.id ? { ...n, messages: finalMessages, contextSummary: finalSummary, lastModified: Date.now() } : n));
+          
+          if (!silent) showToast("剧情锚点构建成功！历史记录已保留。", "success");
+          return finalMessages;
 
       } catch (e) {
           console.error("Anchoring failed", e);
-          showToast("锚点构建失败，请检查网络", "error");
+          if (!silent) showToast("锚点构建失败，请检查网络", "error");
+          // Revert visual changes if needed, or just leave error state
+          return currentHistory;
       } finally {
           setIsStreaming(false);
       }
+  };
+
+  const handleAnchorClick = () => {
+      setIsAnchorModalOpen(true);
   };
 
   const parseChatForConfig = (content: string) => {
@@ -492,6 +508,40 @@ function App() {
       try {
           for (let i = 1; i <= num; i++) {
               if (abortControllerRef.current?.signal.aborted) break;
+              
+              // --- Check Auto-Anchor Condition ---
+              const currentChapters = novelStats.currentChapters; // This is a bit lagged during batch if we don't recalc, but acceptable for next iter.
+              // Re-calculate chapters count based on currentHistory to be more precise during batch
+              let batchCurrentChapters = 0;
+              currentHistory.forEach(m => {
+                  if (m.role === 'model') {
+                      const matches = m.content.match(/(^|\n)##\s*(第[0-9一二三四五六七八九十]+章\s*[^\n]*)/g);
+                      if (matches) batchCurrentChapters += matches.length;
+                  }
+              });
+
+              if (activeNovel.anchorConfig?.enabled && batchCurrentChapters >= activeNovel.anchorConfig.nextTrigger) {
+                  // Execute Anchor
+                  showToast(`自动触发剧情锚点 (第 ${batchCurrentChapters} 章)...`, "info");
+                  
+                  // Run Anchor and get updated history
+                  const newHistory = await executeAnchor(currentHistory, true);
+                  
+                  // Update currentHistory to include anchor messages so next generation uses truncated context
+                  currentHistory = newHistory;
+
+                  // Update next trigger
+                  const nextTrigger = activeNovel.anchorConfig.nextTrigger + activeNovel.anchorConfig.chapterInterval;
+                  updateActiveNovel({ 
+                      anchorConfig: { ...activeNovel.anchorConfig, nextTrigger } 
+                  });
+
+                  // Brief pause
+                  await new Promise(r => setTimeout(r, 1000));
+              }
+              
+              // --- End Auto-Anchor Check ---
+
               const prompt = `请撰写当前目录中下一个尚未撰写的章节正文。
               【排版要求】
               1. 必须明确标出章节标题，格式为：\`## 第X章 标题\` (请勿包含 (草稿) 或其他备注)。
@@ -579,8 +629,8 @@ function App() {
         </div>
         <div className="flex items-center gap-2">
             {messages.length > 5 && (
-                 <button onClick={handleAnchorContext} disabled={isStreaming} className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-indigo-700 dark:text-indigo-300 ec:text-ec-accent bg-indigo-50 dark:bg-indigo-900/30 ec:bg-ec-surface hover:bg-indigo-100 dark:hover:bg-indigo-900/50 ec:hover:bg-ec-border rounded-lg transition-colors border border-indigo-200 dark:border-indigo-800 ec:border-ec-border" title="压缩上下文：将当前剧情总结为锚点，释放Token空间，防止生成中断。">
-                    <span>⚓</span> 剧情锚点
+                 <button onClick={handleAnchorClick} disabled={isStreaming} className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-colors border ${activeNovel.anchorConfig?.enabled ? 'text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-800' : 'text-indigo-700 dark:text-indigo-300 ec:text-ec-accent bg-indigo-50 dark:bg-indigo-900/30 ec:bg-ec-surface hover:bg-indigo-100 dark:hover:bg-indigo-900/50 ec:hover:bg-ec-border border-indigo-200 dark:border-indigo-800 ec:border-ec-border'}`} title="压缩上下文：将当前剧情总结为锚点，释放Token空间，防止生成中断。">
+                    <span>⚓</span> {activeNovel.anchorConfig?.enabled ? `自动锚定 (下一次: ${activeNovel.anchorConfig.nextTrigger}章)` : '剧情锚点'}
                 </button>
             )}
             <button onClick={() => setIsLibraryOpen(true)} className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-gray-100 dark:bg-gray-800 ec:bg-ec-bg rounded-lg ec:text-ec-text"><LibraryIcon /> 图书库</button>
@@ -609,6 +659,16 @@ function App() {
 
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} settings={settings} onSave={updateSettings} />
       <LibraryModal isOpen={isLibraryOpen} onClose={() => setIsLibraryOpen(false)} novels={novels} currentNovelId={currentNovelId} onSelectNovel={(id) => {setCurrentNovelId(id); setIsLibraryOpen(false);}} onCreateNovel={createNewNovel} onDeleteNovel={deleteNovel} onRenameNovel={renameNovel} onDeconstructNovel={handleDeconstructNovel} />
+      
+      <AnchorModal 
+        isOpen={isAnchorModalOpen} 
+        onClose={() => setIsAnchorModalOpen(false)} 
+        currentConfig={activeNovel.anchorConfig}
+        currentChapterCount={novelStats.currentChapters}
+        onExecuteNow={() => executeAnchor()}
+        onSaveConfig={(config) => updateActiveNovel({ anchorConfig: config })}
+      />
+
       {optState && <ComparisonModal isOpen={optState.isOpen} onClose={() => { if (isStreaming) handleStop(); setOptState(null); }} title={optState.type === 'chapter' ? '章节重写/优化' : '段落润色'} oldContent={optState.originalContent} newContent={optState.newContent} onConfirm={handleConfirmOptimization} isApplying={false} isStreaming={isStreaming} />}
       {isContactOpen && <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"><div className="bg-white dark:bg-gray-900 ec:bg-ec-bg border ec:border-ec-border rounded-xl shadow-2xl w-full max-w-sm"><div className="p-4 border-b ec:border-ec-border flex justify-between"><h3 className="ec:text-ec-text">联系开发者</h3><button onClick={() => setIsContactOpen(false)} className="ec:text-ec-text"><XIcon/></button></div><div className="p-8 text-center ec:text-ec-text"><MailIcon/><p>support@inkflow.app</p></div></div></div>}
       

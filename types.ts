@@ -53,11 +53,13 @@ export enum ViewMode {
 export type NovelTab = 'dialogue' | 'settings' | 'database' | 'chapters';
 
 export interface Chapter {
-  id: string;
+  id: string; // Unique ID for React keys
+  messageId: string; // The ID of the message containing this chapter
   title: string;
   content: string; // The actual story text
-  outline?: string; // Brief summary
-  status: 'draft' | 'generated' | 'empty';
+  startIndex: number; // Start index in the message content
+  endIndex: number; // End index in the message content
+  wordCount: number;
 }
 
 export interface NovelState {
@@ -75,4 +77,15 @@ export interface NovelSession {
   lastModified: number;
   messages: Message[];
   settings: AppSettings;
+  contextSummary?: string; // For "Segmented Anchoring" (分段锚定法) - stores the summary of previous volumes/chapters
+}
+
+export interface OptimizationState {
+  isOpen: boolean;
+  type: 'chapter' | 'selection';
+  targetMessageId: string;
+  originalContent: string; // The specific text being replaced
+  newContent: string; // The AI generated text
+  fullOriginalText: string; // The full text of the message (context)
+  replaceRange?: { start: number, end: number }; // For selection replacement
 }

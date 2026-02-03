@@ -1,12 +1,18 @@
+
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
-import { AppSettings, Message } from "../types";
+import { AppSettings, Message, NovelSession } from "../types";
 
 // --- Helpers ---
 
-// Construct the final system instruction by appending active MCP items
-const buildSystemInstruction = (settings: AppSettings): string => {
+// Construct the final system instruction by appending active MCP items and Anchored Context
+const buildSystemInstruction = (settings: AppSettings, contextSummary?: string): string => {
   let instruction = settings.systemInstruction;
   
+  // Inject Segmented Anchor if exists
+  if (contextSummary) {
+      instruction += `\n\n=== 剧情锚点 (Archive Context) ===\n这是前文的剧情与设定浓缩总结。请基于此继续创作，无需重复之前的内容。\n${contextSummary}\n=== 锚点结束 ===\n`;
+  }
+
   const activeMCPs = settings.mcpItems.filter(item => item.isActive);
   if (activeMCPs.length > 0) {
     instruction += "\n\n=== MCP 知识库/上下文 (Knowledge Base) ===\n";
@@ -26,16 +32,15 @@ const createGeminiClient = () => {
 
 const generateGeminiStream = async (
   history: Message[],
-  currentMessage: string, // Redundant if history contains it, but kept for signature compatibility
+  currentMessage: string, 
   settings: AppSettings,
+  contextSummary: string | undefined,
   onChunk: (text: string) => void,
   signal?: AbortSignal
 ): Promise<string> => {
   const ai = createGeminiClient();
   
   // Gemini expects history to be the CONTEXT (past messages).
-  // The trigger message is sent via sendMessageStream.
-  // Since 'history' passed here includes the latest user message, we separate them.
   const pastHistory = history.slice(0, -1);
   const lastMessage = history[history.length - 1];
 
@@ -48,7 +53,7 @@ const generateGeminiStream = async (
     model: settings.googleModel,
     history: chatHistory,
     config: {
-      systemInstruction: buildSystemInstruction(settings),
+      systemInstruction: buildSystemInstruction(settings, contextSummary),
       temperature: settings.temperature,
       topK: settings.topK,
       topP: settings.topP,
@@ -58,7 +63,6 @@ const generateGeminiStream = async (
   });
 
   try {
-    // Use the content from the last message in the history array as the prompt
     const prompt = lastMessage?.content || currentMessage;
     const resultStream = await chat.sendMessageStream({ message: prompt });
     
@@ -87,6 +91,7 @@ const generateOpenAIStream = async (
   history: Message[],
   currentMessage: string,
   settings: AppSettings,
+  contextSummary: string | undefined,
   onChunk: (text: string) => void,
   signal?: AbortSignal
 ): Promise<string> => {
@@ -94,10 +99,8 @@ const generateOpenAIStream = async (
     throw new Error("请在设置中配置 OpenAI API Key");
   }
 
-  // OpenAI expects the full conversation including the latest message.
-  // CRITICAL FIX: Map 'model' role to 'assistant' for OpenAI compatibility
   const messages = [
-    { role: "system", content: buildSystemInstruction(settings) },
+    { role: "system", content: buildSystemInstruction(settings, contextSummary) },
     ...history.map(m => ({ 
       role: m.role === 'model' ? 'assistant' : 'user', 
       content: m.content 
@@ -145,7 +148,6 @@ const generateOpenAIStream = async (
 
       for (const line of lines) {
         const trimmed = line.trim();
-        // More robust check for "data:" prefix (handles potential missing space)
         if (!trimmed.startsWith("data:")) continue;
         
         const dataStr = trimmed.slice(5).trim();
@@ -154,7 +156,6 @@ const generateOpenAIStream = async (
         try {
           const json = JSON.parse(dataStr);
           const delta = json.choices?.[0]?.delta;
-          // Check for content or reasoning_content (for DeepSeek R1 etc compatibility)
           const content = delta?.content || delta?.reasoning_content || "";
           
           if (content) {
@@ -162,7 +163,6 @@ const generateOpenAIStream = async (
             onChunk(content);
           }
         } catch (e) {
-          // Ignore parse errors for incomplete chunks
         }
       }
     }
@@ -182,12 +182,13 @@ export const generateStreamResponse = async (
   history: Message[],
   currentMessage: string,
   settings: AppSettings,
+  contextSummary: string | undefined,
   onChunk: (text: string) => void,
   signal?: AbortSignal
 ): Promise<string> => {
   if (settings.provider === 'openai') {
-    return generateOpenAIStream(history, currentMessage, settings, onChunk, signal);
+    return generateOpenAIStream(history, currentMessage, settings, contextSummary, onChunk, signal);
   } else {
-    return generateGeminiStream(history, currentMessage, settings, onChunk, signal);
+    return generateGeminiStream(history, currentMessage, settings, contextSummary, onChunk, signal);
   }
 };

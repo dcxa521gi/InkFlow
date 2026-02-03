@@ -1,3 +1,4 @@
+
 import React, { useRef, useEffect, useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -57,9 +58,13 @@ const ChatArea: React.FC<ChatAreaProps> = ({
       navigator.clipboard.writeText(text);
   };
 
+  // Robust regex for matching Options at the end of text
+  // Matches: \nOptions:, \n**Options**:, \nOptions： (Chinese)
+  const OPTIONS_REGEX = /(?:^|\n)\s*(?:\*\*|__)?Options(?:\*\*|__)?[:：][\s\S]*$/i;
+
   const startEditing = (msg: Message) => {
       setEditingId(msg.id);
-      setEditContent(msg.content.replace(/Options:.*$/, '').trim());
+      setEditContent(msg.content.replace(OPTIONS_REGEX, '').trim());
   };
 
   const saveEdit = () => {
@@ -81,13 +86,11 @@ const ChatArea: React.FC<ChatAreaProps> = ({
     const lastMsg = messages[messages.length - 1];
     if (lastMsg.role !== 'model' || isStreaming) return [];
 
-    // Parse "Options: [A] [B] [C]"
-    // Regex explanation: Look for "Options:" followed by content in brackets
-    const optionsRegex = /Options:\s*((?:\[.*?\]\s*)+)/i;
-    const match = lastMsg.content.match(optionsRegex);
+    // Regex with capturing group for the content after "Options:"
+    const match = lastMsg.content.match(/(?:^|\n)\s*(?:\*\*|__)?Options(?:\*\*|__)?[:：]([\s\S]*)$/i);
     
     if (match && match[1]) {
-        // Extract content inside brackets
+        // Extract content inside brackets [Option]
         const rawOptions = match[1].match(/\[(.*?)\]/g);
         if (rawOptions) {
             return rawOptions.map(o => o.replace(/[\[\]]/g, '').trim());
@@ -96,9 +99,9 @@ const ChatArea: React.FC<ChatAreaProps> = ({
     return [];
   }, [messages, isStreaming]);
 
-  // Clean content for display (remove the Options line)
+  // Clean content for display (remove the Options line and everything after it)
   const getDisplayContent = (content: string) => {
-      return content.replace(/Options:\s*((?:\[.*?\]\s*)+)/i, '').trim();
+      return content.replace(OPTIONS_REGEX, '').trim();
   };
 
   return (
@@ -172,7 +175,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
                      {msg.role === 'model' && (
                         <button 
                             onClick={() => startEditing(msg)}
-                            className={`p-1 rounded hover:bg-black/10 dark:hover:bg-black/20 ${msg.role === 'user' ? 'text-indigo-200' : 'text-gray-400'}`}
+                            className="p-1 rounded hover:bg-black/10 dark:hover:bg-black/20 text-gray-400"
                             title="编辑"
                         >
                             <EditIcon />

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import ChatArea from './components/ChatArea';
 import NovelView from './components/NovelView';
@@ -42,6 +41,21 @@ const createDefaultNovel = (): NovelSession => ({
   snowflakeMode: false
 });
 
+// Helper to migrate legacy settings
+const migrateSettings = (savedSettings: any): AppSettings => {
+    if (!savedSettings) return { ...DEFAULT_SETTINGS };
+    return {
+        ...DEFAULT_SETTINGS,
+        ...savedSettings,
+        siteSettings: {
+            ...DEFAULT_SETTINGS.siteSettings,
+            ...(savedSettings.siteSettings || {})
+        },
+        mcpItems: savedSettings.mcpItems || DEFAULT_SETTINGS.mcpItems,
+        skillItems: savedSettings.skillItems || DEFAULT_SETTINGS.skillItems
+    };
+};
+
 // Toast Component
 interface Toast {
     id: number;
@@ -55,7 +69,13 @@ function App() {
         const library = localStorage.getItem('inkflow_library');
         if (library) {
             const parsed = JSON.parse(library);
-            if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                // Migrate settings for all existing novels
+                return parsed.map((n: any) => ({
+                    ...n,
+                    settings: migrateSettings(n.settings)
+                }));
+            }
         }
         const oldMessages = localStorage.getItem('inkflow_messages');
         const oldSettings = localStorage.getItem('inkflow_settings');
@@ -73,7 +93,7 @@ function App() {
                 createdAt: Date.now(),
                 lastModified: Date.now(),
                 messages: msgs,
-                settings: oldSettings ? JSON.parse(oldSettings) : DEFAULT_SETTINGS,
+                settings: migrateSettings(oldSettings ? JSON.parse(oldSettings) : null),
                 anchorConfig: { enabled: false, mode: 'chapter', chapterInterval: 20, nextTrigger: 20 },
                 snowflakeMode: false
             };
@@ -110,7 +130,7 @@ function App() {
   const [isStreaming, setIsStreaming] = useState(false);
   
   useEffect(() => {
-      const siteName = activeNovel.settings.siteSettings.siteName || "InkFlow";
+      const siteName = activeNovel.settings?.siteSettings?.siteName || "InkFlow";
       const currentTitle = activeNovel?.title;
       const isDefault = !currentTitle || currentTitle === '未命名小说';
       
@@ -120,7 +140,7 @@ function App() {
           const status = isStreaming ? '生成中' : '创作中';
           document.title = `${currentTitle} - ${status} - ${siteName}`;
       }
-  }, [activeNovel?.title, isStreaming, activeNovel.settings.siteSettings.siteName]);
+  }, [activeNovel?.title, isStreaming, activeNovel.settings]);
 
   const [inputValue, setInputValue] = useState('');
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -669,7 +689,7 @@ function App() {
       } catch (e) { console.error("Batch error", e); } finally { setIsStreaming(false); abortControllerRef.current = null; }
   };
 
-  const siteName = activeNovel.settings.siteSettings?.siteName || 'InkFlow';
+  const siteName = activeNovel.settings?.siteSettings?.siteName || 'InkFlow';
 
   return (
     <div className="flex flex-col h-screen bg-white dark:bg-black ec:bg-ec-bg text-gray-900 dark:text-gray-100 ec:text-ec-text font-sans transition-colors relative">
@@ -699,7 +719,7 @@ function App() {
                         {siteName}
                         <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded-full text-gray-500 dark:text-gray-400 font-medium ml-1">v1.6.0</span>
                     </h1>
-                    {activeNovel.settings.siteSettings?.siteDescription && (
+                    {activeNovel.settings?.siteSettings?.siteDescription && (
                         <span className="text-xs text-gray-500 ec:text-ec-text hidden md:block leading-tight">{activeNovel.settings.siteSettings.siteDescription}</span>
                     )}
                 </div>
@@ -800,13 +820,13 @@ function App() {
                           <MailIcon/>
                           <a href="mailto:lyjhxf@126.com" className="hover:underline">lyjhxf@126.com</a>
                       </div>
-                      {activeNovel.settings.siteSettings?.contactQrCode && (
+                      {activeNovel.settings?.siteSettings?.contactQrCode && (
                           <div className="mt-2">
                               <p className="text-xs text-gray-500 mb-2">扫码添加好友</p>
                               <img src={activeNovel.settings.siteSettings.contactQrCode} alt="Contact QR" className="w-48 h-48 object-cover border rounded-lg shadow-sm" />
                           </div>
                       )}
-                      {!activeNovel.settings.siteSettings?.contactQrCode && (
+                      {!activeNovel.settings?.siteSettings?.contactQrCode && (
                           <p className="text-xs text-gray-400 mt-2">(未配置二维码)</p>
                       )}
                   </div>
@@ -829,7 +849,7 @@ function App() {
                         <span className="text-xl">🚀</span> 快速开始 (Quick Start)
                     </h4>
                     <ol className="list-decimal list-inside space-y-3">
-                        <li><strong>初始化</strong>：在对话框输入想写的故事类型（如“修仙”、“都市”）。AI 会引导你确认【书名】、【世界观】和【核心梗概】。</li>
+                        <li><strong>初始化</strong>：在对话框输入想写的故事类型（如“赛博修仙”）。AI 会引导你确认【书名】、【世界观】和【核心梗概】。</li>
                         <li><strong>参数配置</strong>：点击右上角 <SettingsIcon/>，设置【API Key】（支持 OpenAI/DeepSeek 等）、【总章节数】和【单章字数】。</li>
                         <li><strong>生成大纲</strong>：让 AI 生成角色档案、势力设定和章节大纲。这些内容会自动归档到顶部的“数据库”和“章节”标签页中。</li>
                         <li><strong>批量写作</strong>：在“章节正文”页底部，点击【生成目录】 -> 【撰写 X 章】，AI 将自动连续创作。</li>
@@ -875,9 +895,10 @@ function App() {
                   <section>
                      <h4 className="font-bold text-gray-900 dark:text-white ec:text-ec-text mb-2 text-base border-b pb-2 border-gray-100 dark:border-gray-800 ec:border-ec-border">❓ 常见问题 (FAQ)</h4>
                      <ul className="list-disc list-inside space-y-2 opacity-90 pl-2">
-                         <li><strong>为什么网页打不开？</strong> <br/><span className="text-xs ml-5 block text-gray-500">本应用是 React 项目，必须使用 `npm run build` 编译后才能部署到 Nginx/宝塔。直接上传源码无法运行。详情请阅读 README.md 中的部署指南。</span></li>
-                         <li><strong>生成的内容太短怎么办？</strong> <br/><span className="text-xs ml-5 block text-gray-500">请在设置中调高“每章目标字数”，并确保 AI 模型（如 GPT-4o）有足够的输出能力。v1.6.0 已针对扩写进行了指令优化。</span></li>
-                         <li><strong>如何导出小说？</strong> <br/><span className="text-xs ml-5 block text-gray-500">在“章节正文”页右上角点击下载图标，支持 Word, TXT, Markdown 格式。</span></li>
+                         <li><strong>为什么网页打不开/白屏？</strong> <br/><span className="text-xs ml-5 block text-gray-500">可能是由于浏览器缓存了旧版本的数据导致冲突。请尝试在浏览器控制台中运行 `localStorage.clear()` 然后刷新页面。部署时请确保 Nginx 正确配置了伪静态规则。</span></li>
+                         <li><strong>如何复制内容？</strong> <br/><span className="text-xs ml-5 block text-gray-500">将鼠标悬停在对话气泡上，点击右上角的复制图标即可。</span></li>
+                         <li><strong>生成过程中卡顿/内存占用高？</strong> <br/><span className="text-xs ml-5 block text-gray-500">v1.4.0 已引入节流机制优化性能。若仍卡顿，建议使用“剧情锚点”清理上下文。</span></li>
+                         <li><strong>护眼模式颜色不对？</strong> <br/><span className="text-xs ml-5 block text-gray-500">请确保使用的是 v1.5.0 及以上版本，我们已修复了全站的护眼配色覆盖。</span></li>
                      </ul>
                   </section>
                </div>
@@ -906,10 +927,11 @@ function App() {
                                </div>
                                <span className="text-xs text-gray-400 mb-2">2024-06-20</span>
                                <ul className="text-sm text-gray-600 dark:text-gray-300 ec:text-ec-text space-y-1.5 list-disc list-inside">
-                                   <li>🏗️ <strong>雪花法开关</strong>：右上角新增独立开关，一键切换组合写作模式。</li>
-                                   <li>🧹 <strong>界面净化</strong>：移除干扰信息，优化上下文注入逻辑。</li>
-                                   <li>📋 <strong>复制反馈</strong>：增加复制成功提示。</li>
-                                   <li>📝 <strong>扩写增强</strong>：强制 AI 遵守字数限制，优化场景描写指令。</li>
+                                   <li>🏗️ <strong>雪花法开关</strong>：右上角新增独立开关，绿色开启，灰色关闭，一键切换组合写作模式。</li>
+                                   <li>🧹 <strong>界面净化</strong>：移除聊天中繁琐的“注入上下文”提示，体验更沉浸。</li>
+                                   <li>📋 <strong>复制反馈</strong>：聊天气泡新增复制成功提示。</li>
+                                   <li>🎨 <strong>状态显色</strong>：启用中的功能（如锚点、雪花法）现在有明显的绿色高亮区分。</li>
+                                   <li>🐛 <strong>部署修复</strong>：增强了对旧版数据的兼容性，修复了导致白屏的 Crash 问题。</li>
                                </ul>
                            </div>
                        </div>
@@ -918,56 +940,16 @@ function App() {
                        <div className="relative pl-6">
                            <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-purple-500 border-4 border-white dark:border-gray-900 ec:border-ec-bg"></div>
                            <div className="flex flex-col gap-1">
-                               <h4 className="font-bold text-gray-900 dark:text-white ec:text-ec-text">v1.5.0 - 体验与方法论升级</h4>
+                               <div className="flex items-center gap-2">
+                                   <h4 className="font-bold text-gray-900 dark:text-white ec:text-ec-text">v1.5.0 - 体验与方法论升级</h4>
+                               </div>
                                <span className="text-xs text-gray-400 mb-2">2024-06-15</span>
                                <ul className="text-sm text-gray-600 dark:text-gray-300 ec:text-ec-text space-y-1.5 list-disc list-inside">
-                                   <li>引入“雪花法 + 救猫咪节拍表”双重引擎。</li>
-                                   <li>全站字号升级与护眼模式修复。</li>
+                                   <li>🏗️ <strong>组合写作法</strong>：引入“雪花法 + 救猫咪节拍表”双重引擎。</li>
+                                   <li>👁️ <strong>视觉优化</strong>：全站字号升级（最小16px），修复护眼模式。</li>
                                </ul>
                            </div>
                        </div>
-
-                       {/* v1.4.0 */}
-                       <div className="relative pl-6">
-                           <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-blue-500 border-4 border-white dark:border-gray-900 ec:border-ec-bg"></div>
-                           <div className="flex flex-col gap-1">
-                               <h4 className="font-bold text-gray-900 dark:text-white ec:text-ec-text">v1.4.0 - 深度优化版</h4>
-                               <span className="text-xs text-gray-400 mb-2">2024-06-01</span>
-                               <ul className="text-sm text-gray-600 dark:text-gray-300 ec:text-ec-text space-y-1.5 list-disc list-inside">
-                                   <li>性能优化，引入生成节流。</li>
-                                   <li>新增 SKILL 写作技能系统。</li>
-                                   <li>支持自定义网站信息与二维码。</li>
-                               </ul>
-                           </div>
-                       </div>
-
-                       {/* v1.3.0 */}
-                       <div className="relative pl-6">
-                           <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-gray-300 border-4 border-white dark:border-gray-900 ec:border-ec-bg"></div>
-                           <div className="flex flex-col gap-1">
-                               <h4 className="font-bold text-gray-900 dark:text-white ec:text-ec-text">v1.3.0 - 体验升级版</h4>
-                               <span className="text-xs text-gray-400 mb-2">2024-05-22</span>
-                               <ul className="text-sm text-gray-600 dark:text-gray-300 ec:text-ec-text space-y-1.5 list-disc list-inside">
-                                   <li>新增 TTS 语音朗读功能。</li>
-                                   <li>支持章节正文直接编辑。</li>
-                               </ul>
-                           </div>
-                       </div>
-
-                       {/* v1.0.0 - 1.2.0 */}
-                       <div className="relative pl-6">
-                           <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-gray-200 border-4 border-white dark:border-gray-900 ec:border-ec-bg"></div>
-                           <div className="flex flex-col gap-1 opacity-70">
-                               <h4 className="font-bold text-gray-900 dark:text-white ec:text-ec-text">v1.0.0 - v1.2.0 早期版本</h4>
-                               <span className="text-xs text-gray-400 mb-2">2024-04</span>
-                               <ul className="text-sm text-gray-600 dark:text-gray-300 ec:text-ec-text space-y-1.5 list-disc list-inside">
-                                   <li>基础对话与小说分栏视图。</li>
-                                   <li>多模型支持与参数设置。</li>
-                                   <li>本地书库与存档管理。</li>
-                               </ul>
-                           </div>
-                       </div>
-
                    </div>
                </div>
             </div>

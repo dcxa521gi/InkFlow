@@ -1,4 +1,3 @@
-
 # InkFlow Novel Generator (AI 小说创作助手)
 
 InkFlow 是一款基于 React 和 AI 大模型（OpenAI/Gemini）的现代化小说辅助创作工具。它采用独特的“对话+正文”分屏设计，结合了雪花写作法、剧情锚点和自动化长文生成技术，旨在帮助作者打破创作瓶颈，高效产出高质量网文。
@@ -24,7 +23,7 @@ InkFlow 是一款基于 React 和 AI 大模型（OpenAI/Gemini）的现代化小
 *   **功能增强**：
     *   优化扩写指令，强制 AI 遵守“每章字数”限制。
     *   “剧情锚点”按钮增加状态显色，自动锚定触发时有更清晰的提示。
-    *   修复了部署后网页可能白屏的问题（Entry script fix）。
+    *   **修复部署白屏问题**：修复了因读取旧版 LocalStorage 数据结构不兼容导致的运行时错误（Cannot read properties of undefined）。
 
 ### v1.5.0 (2024-06-15)
 *   **方法论升级**：引入“雪花写作法 + 救猫咪节拍表”组合逻辑。
@@ -162,7 +161,9 @@ npm run build
 
 ### 常见问题排查 (Troubleshooting)
 *   **网页白屏/打不开**：
-    *   检查浏览器控制台 (F12 -> Console)。如果是 `404 Not Found`，通常是因为 Nginx 配置问题。React 是单页应用 (SPA)，需要在 Nginx 配置文件中添加伪静态规则：
+    *   **检查1（数据兼容性）**：按 F12 打开控制台 (Console)，如果看到 `Cannot read properties of undefined`，说明旧版本数据导致崩溃。
+        *   **解决方法**：在控制台输入 `localStorage.clear()` 并回车，然后刷新页面即可修复。（v1.6.0 已修复此问题，但极旧数据可能仍需手动清除）。
+    *   **检查2（Nginx配置）**：如果刷新页面出现 404，通常是因为 React 单页应用需要伪静态支持。请在 Nginx 配置文件中添加：
     ```nginx
     location / {
       try_files $uri $uri/ /index.html;

@@ -62,6 +62,9 @@ const NovelView: React.FC<NovelViewProps> = ({
   const sentenceQueueRef = useRef<string[]>([]);
   const isPlayingRef = useRef(false);
 
+  const fontSize = settings?.siteSettings?.defaultFontSize || 16;
+  const contentStyle = { fontSize: `${fontSize}px`, lineHeight: '1.8' };
+
   useEffect(() => {
       const handleClickOutside = (event: MouseEvent) => {
           if (downloadMenuRef.current && !downloadMenuRef.current.contains(event.target as Node)) {
@@ -536,7 +539,8 @@ const NovelView: React.FC<NovelViewProps> = ({
                       <textarea
                           value={editingChapter.content}
                           onChange={(e) => setEditingChapter({ ...editingChapter, content: e.target.value })}
-                          className="w-full h-full p-4 bg-gray-50 dark:bg-gray-900 ec:bg-ec-surface border border-gray-200 dark:border-gray-800 ec:border-ec-border rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900 dark:text-gray-100 ec:text-ec-text font-serif leading-relaxed text-base"
+                          style={contentStyle}
+                          className="w-full h-full p-4 bg-gray-50 dark:bg-gray-900 ec:bg-ec-surface border border-gray-200 dark:border-gray-800 ec:border-ec-border rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900 dark:text-gray-100 ec:text-ec-text font-serif leading-relaxed"
                           placeholder="在这里编辑章节内容..."
                       />
                   </div>
@@ -556,7 +560,7 @@ const NovelView: React.FC<NovelViewProps> = ({
                 { id: 'chapters', icon: '📚', label: '章节正文' },
                 { id: 'dialogue', icon: '💬', label: '对话记录' },
             ].map((tab) => (
-                <button key={tab.id} onClick={() => setActiveTab(tab.id as NovelTab)} className={`px-4 py-2 text-xs font-medium rounded-t-lg transition-colors flex items-center gap-2 whitespace-nowrap ${activeTab === tab.id ? 'bg-white dark:bg-gray-950 ec:bg-ec-bg text-indigo-600 dark:text-indigo-400 ec:text-ec-text border-x border-t border-gray-200 dark:border-gray-800 ec:border-ec-border relative top-[1px]' : 'text-gray-500 dark:text-gray-400 ec:text-ec-text hover:text-gray-700 dark:hover:text-gray-200 ec:hover:text-black hover:bg-gray-100 dark:hover:bg-gray-800 ec:hover:bg-ec-surface'}`}>
+                <button key={tab.id} onClick={() => setActiveTab(tab.id as NovelTab)} className={`px-4 py-3 text-base font-medium rounded-t-lg transition-colors flex items-center gap-2 whitespace-nowrap ${activeTab === tab.id ? 'bg-white dark:bg-gray-950 ec:bg-ec-bg text-indigo-600 dark:text-indigo-400 ec:text-ec-text border-x border-t border-gray-200 dark:border-gray-800 ec:border-ec-border relative top-[1px]' : 'text-gray-500 dark:text-gray-400 ec:text-ec-text hover:text-gray-700 dark:hover:text-gray-200 ec:hover:text-black hover:bg-gray-100 dark:hover:bg-gray-800 ec:hover:bg-ec-surface'}`}>
                     <span>{tab.icon}</span> {tab.label}
                 </button>
             ))}
@@ -595,14 +599,14 @@ const NovelView: React.FC<NovelViewProps> = ({
                           <div><div className="text-xs text-indigo-500 dark:text-indigo-400 ec:text-ec-accent font-bold uppercase mb-1">每章字数目标</div><div className="text-2xl font-black text-indigo-600 dark:text-indigo-300 ec:text-ec-text">{settings.targetWordsPerChapter} <span className="text-sm font-normal text-gray-500 dark:text-gray-400 ec:text-ec-text">字</span></div></div>
                       </div>
                   )}
-                  <div className="prose dark:prose-invert ec:prose-eyecare prose-indigo max-w-none dark:prose-headings:text-gray-100 dark:prose-p:text-gray-300">
+                  <div className="prose dark:prose-invert ec:prose-eyecare prose-indigo max-w-none dark:prose-headings:text-gray-100 dark:prose-p:text-gray-300" style={contentStyle}>
                     <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>{settingsContent}</ReactMarkdown>
                   </div>
               </div>
           )}
 
           {(activeTab === 'database' || activeTab === 'dialogue') && (
-            <div className="p-8 prose dark:prose-invert ec:prose-eyecare prose-indigo max-w-none dark:prose-headings:text-gray-100 dark:prose-p:text-gray-300">
+            <div className="p-8 prose dark:prose-invert ec:prose-eyecare prose-indigo max-w-none dark:prose-headings:text-gray-100 dark:prose-p:text-gray-300" style={contentStyle}>
                 <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} components={{ code({node, className, children, ...props}) { const match = /language-(\w+)/.exec(className || ''); return match ? (<div className="mockup-code bg-gray-100 dark:bg-gray-800 ec:bg-ec-surface rounded-lg p-4 my-4 overflow-x-auto text-sm font-mono border border-gray-200 dark:border-gray-700 ec:border-ec-border">{String(children).replace(/\n$/, '')}</div>) : (<code className="bg-gray-100 dark:bg-gray-800 ec:bg-ec-surface rounded px-1 py-0.5 text-sm font-mono text-pink-500 dark:text-pink-300" {...props}>{children}</code>); } }}>
                 {activeTab === 'dialogue' ? dialogueContent : databaseContent}
                 </ReactMarkdown>
@@ -687,7 +691,7 @@ const NovelView: React.FC<NovelViewProps> = ({
                              </div>
                          </div>
                          {isExpanded && (
-                             <div className="p-5 prose dark:prose-invert ec:prose-eyecare prose-indigo max-w-none text-sm leading-7 md:text-base md:leading-8 dark:prose-headings:text-gray-100 dark:prose-p:text-gray-300 animate-fadeIn">
+                             <div className="p-5 prose dark:prose-invert ec:prose-eyecare prose-indigo max-w-none leading-7 md:leading-8 dark:prose-headings:text-gray-100 dark:prose-p:text-gray-300 animate-fadeIn" style={contentStyle}>
                                 <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>{chapter.content}</ReactMarkdown>
                              </div>
                          )}

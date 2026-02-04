@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { AppSettings, MCPItem } from '../types';
+import { AppSettings, MCPItem, SkillItem } from '../types';
 import { AVAILABLE_OPENAI_MODELS, DEFAULT_SYSTEM_INSTRUCTION } from '../constants';
-import { XIcon, RefreshIcon } from './Icons';
+import { XIcon, RefreshIcon, TrashIcon } from './Icons';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -11,7 +11,7 @@ interface SettingsModalProps {
   onSave: (newSettings: AppSettings) => void;
 }
 
-type Tab = 'general' | 'prompt' | 'mcp';
+type Tab = 'general' | 'prompt' | 'mcp' | 'skills' | 'site';
 
 const PRESETS = [
   { name: 'DeepSeek', url: 'https://api.deepseek.com', model: 'deepseek-chat' },
@@ -45,7 +45,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
   // Sync with props when opened
   React.useEffect(() => {
     if (isOpen) {
-        setLocalSettings({ ...settings, provider: 'openai' }); // Force OpenAI provider
+        setLocalSettings({ ...settings }); 
         isFirstSync.current = true; // Reset flag on open
         setSaveStatus('saved');
     }
@@ -74,6 +74,16 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
 
   const handleChange = (key: keyof AppSettings, value: any) => {
     setLocalSettings(prev => ({ ...prev, [key]: value }));
+  };
+  
+  const handleSiteChange = (key: keyof AppSettings['siteSettings'], value: any) => {
+      setLocalSettings(prev => ({
+          ...prev,
+          siteSettings: {
+              ...prev.siteSettings,
+              [key]: value
+          }
+      }));
   };
 
   const applyPreset = (preset: typeof PRESETS[0]) => {
@@ -127,29 +137,43 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
 
   // MCP Handlers
   const addMCPItem = () => {
-    const newItem: MCPItem = {
-      id: Date.now().toString(),
-      name: '新设定',
-      content: '',
-      isActive: true
-    };
+    const newItem: MCPItem = { id: Date.now().toString(), name: '新设定', content: '', isActive: true };
     handleChange('mcpItems', [...localSettings.mcpItems, newItem]);
   };
-
   const updateMCPItem = (id: string, updates: Partial<MCPItem>) => {
-    const newItems = localSettings.mcpItems.map(item => 
-      item.id === id ? { ...item, ...updates } : item
-    );
+    const newItems = localSettings.mcpItems.map(item => item.id === id ? { ...item, ...updates } : item);
     handleChange('mcpItems', newItems);
   };
+  const deleteMCPItem = (id: string) => handleChange('mcpItems', localSettings.mcpItems.filter(item => item.id !== id));
 
-  const deleteMCPItem = (id: string) => {
-    handleChange('mcpItems', localSettings.mcpItems.filter(item => item.id !== id));
+  // Skills Handlers
+  const addSkillItem = () => {
+    const newItem: SkillItem = { id: Date.now().toString(), name: '新技能', content: '', isActive: true };
+    handleChange('skillItems', [...(localSettings.skillItems || []), newItem]);
   };
+  const updateSkillItem = (id: string, updates: Partial<SkillItem>) => {
+    const newItems = (localSettings.skillItems || []).map(item => item.id === id ? { ...item, ...updates } : item);
+    handleChange('skillItems', newItems);
+  };
+  const deleteSkillItem = (id: string) => handleChange('skillItems', (localSettings.skillItems || []).filter(item => item.id !== id));
+  
+  // Image Upload
+  const handleQrUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+              handleSiteChange('contactQrCode', reader.result as string);
+          };
+          reader.readAsDataURL(file);
+      }
+  };
+
+  const navClass = (tab: Tab) => `text-left px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === tab ? 'bg-indigo-600 text-white' : 'text-gray-600 dark:text-gray-400 ec:text-ec-text hover:bg-gray-200 dark:hover:bg-gray-900 ec:hover:bg-ec-surface hover:text-gray-900 dark:hover:text-white'}`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fadeIn">
-      <div className="bg-white dark:bg-gray-900 ec:bg-ec-bg border border-gray-200 dark:border-gray-700 ec:border-ec-border rounded-xl shadow-2xl w-full max-w-4xl h-[750px] max-h-[95vh] overflow-hidden flex flex-col transition-colors">
+      <div className="bg-white dark:bg-gray-900 ec:bg-ec-bg border border-gray-200 dark:border-gray-700 ec:border-ec-border rounded-xl shadow-2xl w-full max-w-5xl h-[750px] max-h-[95vh] overflow-hidden flex flex-col transition-colors">
         
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-800 ec:border-ec-border bg-gray-50 dark:bg-gray-900 ec:bg-ec-surface">
@@ -175,24 +199,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
         <div className="flex flex-1 overflow-hidden">
           {/* Sidebar */}
           <div className="w-48 bg-gray-100 dark:bg-gray-950 ec:bg-ec-bg border-r border-gray-200 dark:border-gray-800 ec:border-ec-border p-4 flex flex-col gap-2 shrink-0">
-            <button 
-              onClick={() => setActiveTab('general')}
-              className={`text-left px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'general' ? 'bg-indigo-600 text-white' : 'text-gray-600 dark:text-gray-400 ec:text-ec-text hover:bg-gray-200 dark:hover:bg-gray-900 ec:hover:bg-ec-surface hover:text-gray-900 dark:hover:text-white'}`}
-            >
-              通用 / 模型
-            </button>
-            <button 
-              onClick={() => setActiveTab('prompt')}
-              className={`text-left px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'prompt' ? 'bg-indigo-600 text-white' : 'text-gray-600 dark:text-gray-400 ec:text-ec-text hover:bg-gray-200 dark:hover:bg-gray-900 ec:hover:bg-ec-surface hover:text-gray-900 dark:hover:text-white'}`}
-            >
-              预置参数 / 人设
-            </button>
-            <button 
-              onClick={() => setActiveTab('mcp')}
-              className={`text-left px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'mcp' ? 'bg-indigo-600 text-white' : 'text-gray-600 dark:text-gray-400 ec:text-ec-text hover:bg-gray-200 dark:hover:bg-gray-900 ec:hover:bg-ec-surface hover:text-gray-900 dark:hover:text-white'}`}
-            >
-              MCP 知识库
-            </button>
+            <button onClick={() => setActiveTab('general')} className={navClass('general')}>通用 / 模型</button>
+            <button onClick={() => setActiveTab('prompt')} className={navClass('prompt')}>预置参数 / 人设</button>
+            <button onClick={() => setActiveTab('mcp')} className={navClass('mcp')}>MCP 知识库</button>
+            <button onClick={() => setActiveTab('skills')} className={navClass('skills')}>⚡ SKILL 技能</button>
+            <button onClick={() => setActiveTab('site')} className={navClass('site')}>🌐 网站/显示</button>
           </div>
 
           {/* Content Area */}
@@ -221,7 +232,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
                    </div>
                 </div>
 
-                {/* OpenAI Configuration (Now Main) */}
+                {/* OpenAI Configuration */}
                 <div className="space-y-4 animate-fadeIn border-t border-gray-200 dark:border-gray-800 ec:border-ec-border pt-6">
                      <h3 className="text-sm font-semibold text-green-600 dark:text-green-400 uppercase tracking-wider">接口参数配置</h3>
                      <div>
@@ -280,6 +291,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
                 {/* Novel Constraints */}
                  <div className="pt-4 border-t border-gray-200 dark:border-gray-800 ec:border-ec-border space-y-4">
                      <h3 className="text-sm font-semibold text-gray-900 dark:text-white ec:text-ec-text uppercase tracking-wider">小说生成目标 (Generation Constraints)</h3>
+                     <div className="bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-200 dark:border-yellow-800 p-3 rounded-lg text-xs text-yellow-800 dark:text-yellow-500">
+                         ⚠️ 注意：此处修改的【总章节】和【每章字数】将作为最高指令注入 AI。在对话开始后，除非用户明确要求修改，否则 AI 不会自行变更。
+                     </div>
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 ec:text-ec-text mb-1">预计总章节数</label>
@@ -304,77 +318,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
                         </div>
                      </div>
                  </div>
-
-                {/* Common Params */}
-                <div className="pt-4 border-t border-gray-200 dark:border-gray-800 ec:border-ec-border space-y-6">
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 ec:text-ec-text mb-1">
-                          随机性 (Temperature): {localSettings.temperature}
-                        </label>
-                        <input 
-                          type="range" min="0" max="2" step="0.1"
-                          value={localSettings.temperature}
-                          onChange={(e) => handleChange('temperature', parseFloat(e.target.value))}
-                          className="w-full h-2 bg-gray-200 dark:bg-gray-700 ec:bg-ec-border rounded-lg appearance-none cursor-pointer"
-                        />
-                        <div className="flex justify-between text-[10px] text-gray-500 ec:text-ec-text mt-1">
-                            <span>严谨/逻辑 (0.2)</span>
-                            <span>均衡 (0.8)</span>
-                            <span>创意/脑洞 (1.2+)</span>
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 ec:text-ec-text mb-1">
-                           核采样 (Top P): {localSettings.topP}
-                        </label>
-                        <input 
-                          type="range" min="0" max="1" step="0.05"
-                          value={localSettings.topP}
-                          onChange={(e) => handleChange('topP', parseFloat(e.target.value))}
-                          className="w-full h-2 bg-gray-200 dark:bg-gray-700 ec:bg-ec-border rounded-lg appearance-none cursor-pointer"
-                        />
-                        <div className="flex justify-between text-[10px] text-gray-500 ec:text-ec-text mt-1">
-                            <span>聚焦 (0.1)</span>
-                            <span>多样化 (0.9)</span>
-                        </div>
-                      </div>
-                   </div>
-
-                   {/* Token Setting */}
-                   <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 ec:text-ec-text mb-1">
-                           最大输出/上下文长度 (Max Tokens)
-                        </label>
-                        <input 
-                          type="number"
-                          min="1"
-                          max="128000"
-                          value={localSettings.maxOutputTokens || 4096}
-                          onChange={(e) => handleChange('maxOutputTokens', parseInt(e.target.value) || 0)}
-                          className="w-full bg-gray-50 dark:bg-gray-800 ec:bg-white border border-gray-300 dark:border-gray-700 ec:border-ec-border rounded-lg px-4 py-2 text-gray-900 dark:text-white ec:text-ec-text focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                        />
-                   </div>
-
-                   {/* Explanatory Box */}
-                   <div className="bg-gray-50 dark:bg-gray-950/50 ec:bg-white border border-gray-200 dark:border-gray-800 ec:border-ec-border rounded-lg p-4 text-xs text-gray-600 dark:text-gray-400 ec:text-ec-text space-y-2">
-                       <h4 className="font-bold text-gray-800 dark:text-gray-300 ec:text-ec-text">📖 小说生成参数说明指南</h4>
-                       <ul className="space-y-1 list-disc list-inside">
-                           <li><strong className="text-gray-800 dark:text-gray-300 ec:text-ec-text">随机性 (Temperature)</strong>: 控制故事的创意程度。
-                               <span className="block pl-4 text-gray-500">· 0.2 - 0.5: 严谨、逻辑性强，适合写大纲或推理情节。</span>
-                               <span className="block pl-4 text-gray-500">· 0.7 - 1.0: 均衡、有文采，适合正文撰写 (推荐)。</span>
-                               <span className="block pl-4 text-gray-500">· 1.0+: 极具脑洞，但可能出现逻辑跳脱。</span>
-                           </li>
-                           <li><strong className="text-gray-800 dark:text-gray-300 ec:text-ec-text">核采样 (Top P)</strong>: 辅助控制词汇丰富度。通常保持在 0.9 左右即可。</li>
-                           <li><strong className="text-gray-800 dark:text-gray-300 ec:text-ec-text">Token (最大长度)</strong>: 控制单次回复的字数上限。
-                               <span className="block pl-4 text-gray-500">· 调大该值可生成更长的章节，但需注意模型支持的上限 (如 GPT-4o 支持 128k, 但生成通常限制在 4k 左右)。</span>
-                           </li>
-                       </ul>
-                   </div>
-                </div>
               </div>
             )}
 
+            {/* Prompt Tab */}
             {activeTab === 'prompt' && (
               <div className="h-full flex flex-col">
                   <div className="flex items-center justify-between mb-4">
@@ -392,69 +339,105 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
                     className="flex-1 w-full bg-gray-50 dark:bg-gray-800 ec:bg-white border border-gray-200 dark:border-gray-700 ec:border-ec-border rounded-lg px-4 py-4 text-sm text-gray-800 dark:text-gray-300 ec:text-ec-text focus:ring-2 focus:ring-indigo-500 focus:outline-none font-mono resize-none leading-relaxed"
                     placeholder="在此输入 System Prompt..."
                   />
-                  <p className="text-xs text-gray-500 ec:text-ec-text mt-2 opacity-70">提示: 清晰的指令可以显著提高生成质量。尝试包含具体的角色背景、任务目标和输出格式要求。</p>
               </div>
             )}
 
+            {/* MCP Tab */}
             {activeTab === 'mcp' && (
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-lg font-bold text-gray-900 dark:text-white ec:text-ec-text">MCP 知识库 (Library)</h3>
-                    <p className="text-sm text-gray-500 ec:text-ec-text opacity-70">在此定义世界观、角色卡或设定集。启用后，这些内容将自动注入到 AI 上下文中。</p>
+                    <p className="text-sm text-gray-500 ec:text-ec-text opacity-70">定义世界观、角色卡或设定集。启用后自动注入。</p>
                   </div>
-                  <button 
-                    onClick={addMCPItem}
-                    className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm rounded-lg transition-colors"
-                  >
-                    + 添加新条目
-                  </button>
+                  <button onClick={addMCPItem} className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm rounded-lg transition-colors">+ 添加</button>
                 </div>
-
                 <div className="space-y-4">
-                   {localSettings.mcpItems.length === 0 && (
-                     <div className="text-center py-10 text-gray-500 ec:text-ec-text border border-dashed border-gray-200 dark:border-gray-800 ec:border-ec-border rounded-lg">
-                        暂无条目，点击右上角添加。
-                     </div>
-                   )}
-                   
-                   {localSettings.mcpItems.map((item) => (
+                   {(localSettings.mcpItems || []).map((item) => (
                      <div key={item.id} className="bg-gray-50 dark:bg-gray-800 ec:bg-white border border-gray-200 dark:border-gray-700 ec:border-ec-border rounded-lg p-4 flex flex-col gap-3 group">
                         <div className="flex items-center justify-between">
                            <div className="flex items-center gap-3 flex-1">
-                              <input 
-                                type="checkbox"
-                                checked={item.isActive}
-                                onChange={(e) => updateMCPItem(item.id, { isActive: e.target.checked })}
-                                className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 ec:border-ec-border text-indigo-600 focus:ring-indigo-500 bg-gray-100 dark:bg-gray-700 ec:bg-white cursor-pointer"
-                                title="启用/禁用"
-                              />
-                              <input 
-                                type="text"
-                                value={item.name}
-                                onChange={(e) => updateMCPItem(item.id, { name: e.target.value })}
-                                placeholder="条目名称 (如: 主角设定)"
-                                className="bg-transparent border-b border-transparent focus:border-indigo-500 focus:outline-none text-gray-900 dark:text-white ec:text-ec-text font-medium placeholder-gray-500 w-full"
-                              />
+                              <input type="checkbox" checked={item.isActive} onChange={(e) => updateMCPItem(item.id, { isActive: e.target.checked })} className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"/>
+                              <input type="text" value={item.name} onChange={(e) => updateMCPItem(item.id, { name: e.target.value })} className="bg-transparent border-b border-transparent focus:border-indigo-500 focus:outline-none text-gray-900 dark:text-white ec:text-ec-text font-medium w-full"/>
                            </div>
-                           <button 
-                              onClick={() => deleteMCPItem(item.id)}
-                              className="text-gray-500 hover:text-red-500 dark:hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                           >
-                              删除
-                           </button>
+                           <button onClick={() => deleteMCPItem(item.id)} className="text-gray-500 hover:text-red-500 transition-opacity"><TrashIcon/></button>
                         </div>
-                        <textarea 
-                           value={item.content}
-                           onChange={(e) => updateMCPItem(item.id, { content: e.target.value })}
-                           placeholder="在此输入详细设定内容..."
-                           rows={3}
-                           className="w-full bg-gray-100 dark:bg-gray-900/50 ec:bg-ec-surface border border-gray-200 dark:border-gray-700 ec:border-ec-border rounded-md px-3 py-2 text-sm text-gray-800 dark:text-gray-300 ec:text-ec-text focus:ring-1 focus:ring-indigo-500 focus:outline-none resize-y"
-                        />
+                        <textarea value={item.content} onChange={(e) => updateMCPItem(item.id, { content: e.target.value })} rows={3} className="w-full bg-gray-100 dark:bg-gray-900/50 ec:bg-ec-surface border border-gray-200 dark:border-gray-700 ec:border-ec-border rounded-md px-3 py-2 text-sm text-gray-800 dark:text-gray-300 ec:text-ec-text focus:ring-1 focus:ring-indigo-500 focus:outline-none resize-y"/>
                      </div>
                    ))}
                 </div>
               </div>
+            )}
+
+            {/* Skills Tab */}
+            {activeTab === 'skills' && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white ec:text-ec-text">⚡ 写作技能 (SKILL)</h3>
+                    <p className="text-sm text-gray-500 ec:text-ec-text opacity-70">定义特殊的写作技巧、文风要求或描写规范。</p>
+                  </div>
+                  <button onClick={addSkillItem} className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm rounded-lg transition-colors">+ 添加技能</button>
+                </div>
+                <div className="space-y-4">
+                   {(localSettings.skillItems || []).map((item) => (
+                     <div key={item.id} className="bg-gray-50 dark:bg-gray-800 ec:bg-white border border-gray-200 dark:border-gray-700 ec:border-ec-border rounded-lg p-4 flex flex-col gap-3 group">
+                        <div className="flex items-center justify-between">
+                           <div className="flex items-center gap-3 flex-1">
+                              <input type="checkbox" checked={item.isActive} onChange={(e) => updateSkillItem(item.id, { isActive: e.target.checked })} className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"/>
+                              <input type="text" value={item.name} onChange={(e) => updateSkillItem(item.id, { name: e.target.value })} placeholder="技能名称" className="bg-transparent border-b border-transparent focus:border-indigo-500 focus:outline-none text-gray-900 dark:text-white ec:text-ec-text font-medium w-full"/>
+                           </div>
+                           <button onClick={() => deleteSkillItem(item.id)} className="text-gray-500 hover:text-red-500 transition-opacity"><TrashIcon/></button>
+                        </div>
+                        <textarea value={item.content} onChange={(e) => updateSkillItem(item.id, { content: e.target.value })} placeholder="输入技能的具体要求..." rows={3} className="w-full bg-gray-100 dark:bg-gray-900/50 ec:bg-ec-surface border border-gray-200 dark:border-gray-700 ec:border-ec-border rounded-md px-3 py-2 text-sm text-gray-800 dark:text-gray-300 ec:text-ec-text focus:ring-1 focus:ring-indigo-500 focus:outline-none resize-y"/>
+                     </div>
+                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* Site Tab */}
+            {activeTab === 'site' && (
+                <div className="space-y-6">
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white ec:text-ec-text">🌐 网站与显示设置</h3>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 ec:text-ec-text mb-1">网站名称</label>
+                           <input type="text" value={localSettings.siteSettings?.siteName || 'InkFlow'} onChange={(e) => handleSiteChange('siteName', e.target.value)} className="w-full bg-gray-50 dark:bg-gray-800 ec:bg-white border border-gray-300 dark:border-gray-700 ec:border-ec-border rounded-lg px-4 py-2 text-gray-900 dark:text-white ec:text-ec-text focus:ring-2 focus:ring-indigo-500 focus:outline-none"/>
+                        </div>
+                        <div>
+                           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 ec:text-ec-text mb-1">网站简介/Slogan</label>
+                           <input type="text" value={localSettings.siteSettings?.siteDescription || ''} onChange={(e) => handleSiteChange('siteDescription', e.target.value)} className="w-full bg-gray-50 dark:bg-gray-800 ec:bg-white border border-gray-300 dark:border-gray-700 ec:border-ec-border rounded-lg px-4 py-2 text-gray-900 dark:text-white ec:text-ec-text focus:ring-2 focus:ring-indigo-500 focus:outline-none"/>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 ec:text-ec-text mb-2">
+                            整站正文字号: {localSettings.siteSettings?.defaultFontSize || 16}px
+                        </label>
+                        <input 
+                            type="range" min="14" max="28" step="1"
+                            value={localSettings.siteSettings?.defaultFontSize || 16}
+                            onChange={(e) => handleSiteChange('defaultFontSize', parseInt(e.target.value))}
+                            className="w-full h-2 bg-gray-200 dark:bg-gray-700 ec:bg-ec-border rounded-lg appearance-none cursor-pointer"
+                        />
+                        <div className="flex justify-between text-xs text-gray-500 mt-1">
+                            <span>14px (最小)</span>
+                            <span>28px (最大)</span>
+                        </div>
+                    </div>
+
+                    <div className="border-t border-gray-200 dark:border-gray-800 ec:border-ec-border pt-4">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 ec:text-ec-text mb-2">联系开发者二维码 (上传图片)</label>
+                        <div className="flex items-center gap-4">
+                            <input type="file" accept="image/*" onChange={handleQrUpload} className="text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" />
+                            {localSettings.siteSettings?.contactQrCode && (
+                                <img src={localSettings.siteSettings.contactQrCode} alt="QR Preview" className="w-16 h-16 object-cover border rounded-lg" />
+                            )}
+                        </div>
+                    </div>
+                </div>
             )}
 
           </div>

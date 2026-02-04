@@ -5,6 +5,7 @@ export interface Message {
   content: string;
   timestamp: number;
   options?: string[]; // Parsed suggested responses
+  isSystemNotice?: boolean; // New: For displaying invoked MCP/Skills
 }
 
 export type AIProvider = 'google' | 'openai';
@@ -16,11 +17,25 @@ export interface MCPItem {
   isActive: boolean;
 }
 
+export interface SkillItem {
+  id: string;
+  name: string;
+  content: string;
+  isActive: boolean;
+}
+
 export interface AnchorConfig {
   enabled: boolean;
   mode: 'volume' | 'chapter';
   chapterInterval: 20 | 50; // Every 20 or 50 chapters
   nextTrigger: number; // The chapter number that triggers the next anchor
+}
+
+export interface SiteSettings {
+  siteName: string;
+  siteDescription: string;
+  defaultFontSize: number; // 14 - 28
+  contactQrCode?: string; // Base64 string for QR Code
 }
 
 export interface AppSettings {
@@ -47,8 +62,12 @@ export interface AppSettings {
   targetTotalChapters: number;
   targetWordsPerChapter: number;
 
-  // MCP / Knowledge Base
+  // Knowledge & Skills
   mcpItems: MCPItem[];
+  skillItems: SkillItem[];
+
+  // Site Configuration
+  siteSettings: SiteSettings;
 }
 
 export enum ViewMode {
@@ -86,6 +105,7 @@ export interface NovelSession {
   settings: AppSettings;
   contextSummary?: string; // For "Segmented Anchoring" (分段锚定法) - stores the summary of previous volumes/chapters
   anchorConfig?: AnchorConfig; // Auto-anchor settings
+  snowflakeMode?: boolean; // New: Snowflake method active state
 }
 
 export interface OptimizationState {

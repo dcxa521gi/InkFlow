@@ -13,29 +13,45 @@ const buildSystemInstruction = (settings: AppSettings, contextSummary?: string):
       instruction += `\n\n=== 剧情锚点 (Archive Context) ===\n这是前文的剧情与设定浓缩总结。请基于此继续创作，无需重复之前的内容。\n${contextSummary}\n=== 锚点结束 ===\n`;
   }
 
+  // Inject MCP Items
   const activeMCPs = settings.mcpItems.filter(item => item.isActive);
   if (activeMCPs.length > 0) {
-    instruction += "\n\n=== MCP 知识库/上下文 (Knowledge Base) ===\n";
+    instruction += "\n\n=== 📚 MCP 知识库 (Knowledge Base) ===\n";
+    instruction += "以下设定必须在创作中被引用和遵守：\n";
     activeMCPs.forEach(item => {
       instruction += `\n[${item.name}]:\n${item.content}\n`;
     });
-    instruction += "\n=== 请在创作时参考以上资料 ===\n";
   }
+
+  // Inject SKILL Items
+  const activeSkills = settings.skillItems.filter(item => item.isActive);
+  if (activeSkills.length > 0) {
+    instruction += "\n\n=== ⚡ 写作技能 (Writing Skills) ===\n";
+    instruction += "请在本次生成中严格应用以下写作技巧：\n";
+    activeSkills.forEach(item => {
+        instruction += `\n[${item.name}]:\n${item.content}\n`;
+    });
+  }
+  
+  instruction += "\n=== 指令结束 ===\n";
   
   return instruction;
 };
 
 // Helper to filter history if anchor exists
 const getHistoryForAI = (history: Message[], contextSummary?: string): Message[] => {
-    if (!contextSummary) return history;
+    // Filter out system notices from UI history before sending to AI
+    const cleanHistory = history.filter(m => !m.isSystemNotice);
+
+    if (!contextSummary) return cleanHistory;
     
     // If we have an anchor, we assume older history is summarized.
     // We only need the System Instruction (containing summary) + Recent Context.
     // Keep last 6 messages to maintain immediate flow.
     const recentCount = 6;
-    if (history.length <= recentCount) return history;
+    if (cleanHistory.length <= recentCount) return cleanHistory;
     
-    return history.slice(-recentCount);
+    return cleanHistory.slice(-recentCount);
 };
 
 
@@ -54,7 +70,6 @@ const generateGeminiStream = async (
 ): Promise<string> => {
   const ai = createGeminiClient();
   
-  // Apply Anchor Logic: Truncate history if summary exists
   const effectiveHistory = getHistoryForAI(history, contextSummary);
   
   const pastHistory = effectiveHistory.slice(0, -1);
@@ -115,7 +130,6 @@ const generateOpenAIStream = async (
     throw new Error("请在设置中配置 OpenAI API Key");
   }
 
-  // Apply Anchor Logic: Truncate history if summary exists
   const effectiveHistory = getHistoryForAI(history, contextSummary);
 
   const messages = [

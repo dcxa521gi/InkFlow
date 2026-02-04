@@ -16,6 +16,7 @@ interface ChatAreaProps {
   onStop: () => void;
   onMessageEdit: (id: string, newContent: string) => void;
   onSummarize: () => void;
+  onShowToast: (msg: string, type: 'success' | 'error' | 'info') => void;
 }
 
 const ChatArea: React.FC<ChatAreaProps> = ({ 
@@ -27,7 +28,8 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   onSend,
   onStop,
   onMessageEdit,
-  onSummarize
+  onSummarize,
+  onShowToast
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputLength = input.length;
@@ -56,6 +58,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
 
   const copyToClipboard = (text: string) => {
       navigator.clipboard.writeText(text);
+      onShowToast('内容已复制到剪贴板', 'success');
   };
 
   // Robust regex for matching Options at the end of text
@@ -256,7 +259,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
                         className={`p-3 rounded-xl transition-all ${
                         !input.trim() 
                             ? 'bg-gray-100 dark:bg-gray-800 ec:bg-ec-surface text-gray-400 dark:text-gray-600 ec:text-gray-400 cursor-not-allowed' 
-                            : 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-500/20 ec:bg-ec-accent'
+                            : 'bg-indigo-600 text-white hover:bg-indigo-50 shadow-lg shadow-indigo-500/20 ec:bg-ec-accent'
                         }`}
                     >
                         <SendIcon />

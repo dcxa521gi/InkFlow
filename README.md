@@ -1,20 +1,177 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
 
-# Run and deploy your AI Studio app
+# InkFlow Novel Generator (AI 小说创作助手)
 
-This contains everything you need to run your app locally.
+InkFlow 是一款基于 React 和 AI 大模型（OpenAI/Gemini）的现代化小说辅助创作工具。它采用独特的“对话+正文”分屏设计，结合了雪花写作法、剧情锚点和自动化长文生成技术，旨在帮助作者打破创作瓶颈，高效产出高质量网文。
 
-View your app in AI Studio: https://ai.studio/apps/drive/1pG1MrlhLSO23qbk0LU2jSxy1WIF9v-cq
+## 🌟 核心特性
 
-## Run Locally
+*   **分屏创作**：左侧与 AI 对话构思，右侧实时预览大纲、设定集和正文。
+*   **组合写作法**：内置“雪花法 + 救猫咪节拍表”双重引擎，从一句话扩充为百万字大纲。
+*   **剧情锚点 (Context Anchor)**：独创的分段锚定技术，解决 AI 长文遗忘问题，支持自动压缩上下文。
+*   **批量生成**：一键生成完整目录，并支持连续批量撰写正文，严格遵守字数要求。
+*   **沉浸式体验**：支持夜间模式、护眼模式（豆沙绿），以及 TTS 语音朗读。
+*   **知识库注入**：自定义 MCP 世界观和 SKILL 写作技能，确保 AI 风格统一。
 
-**Prerequisites:**  Node.js
+---
 
+## 📜 版本历史 (Version History)
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+### v1.6.0 (2024-06-20) - Latest
+*   **交互优化**：
+    *   右上角新增“雪花法”独立开关，一键切换高级引导模式。
+    *   聊天气泡新增复制成功反馈。
+    *   界面净化，移除聊天流中冗余的“注入上下文”提示。
+*   **功能增强**：
+    *   优化扩写指令，强制 AI 遵守“每章字数”限制。
+    *   “剧情锚点”按钮增加状态显色，自动锚定触发时有更清晰的提示。
+    *   修复了部署后网页可能白屏的问题（Entry script fix）。
+
+### v1.5.0 (2024-06-15)
+*   **方法论升级**：引入“雪花写作法 + 救猫咪节拍表”组合逻辑。
+*   **视觉升级**：全站字号升级（最小 16px），修复护眼模式配色。
+
+### v1.4.0 (2024-06-01)
+*   **性能优化**：引入生成节流机制，降低内存占用。
+*   **新功能**：SKILL 技能系统上线，支持自定义文风要求。
+*   **个性化**：支持设置自定义网站名称与联系二维码。
+
+### v1.3.0 (2024-05-22)
+*   **体验升级**：新增 TTS 语音朗读功能，支持语速调节。
+*   **编辑功能**：支持对 AI 生成的章节正文进行直接编辑与保存。
+
+### v1.0.0 - v1.2.0 (早期版本)
+*   基础对话功能，多模型支持，本地书库管理。
+
+---
+
+## 📖 使用全教程 (User Guide)
+
+### 1. 初始化与配置
+*   打开网站，点击右上角的设置图标 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>。
+*   填写 **OpenAI API Key** 和 **Base URL** (支持 DeepSeek, Kimi, GPT-4 等)。
+*   设定**预计总章节数**和**每章字数目标**（建议 2000-3000 字）。
+
+### 2. 构思与大纲
+*   **自由模式**：直接与 AI 对话，“我想写一个赛博修仙的故事”。
+*   **雪花法模式**：点击顶部“❄️ 雪花法”按钮，AI 会引导你从一句话扩充到完整细纲。
+*   AI 生成的内容会自动分类显示在右侧的“基础设定”和“数据库”标签页中。
+
+### 3. 生成正文
+*   切换到右侧“章节正文”标签页。
+*   点击底部的 **“+X章 目录”**，让 AI 生成章节列表。
+*   有了目录后，点击 **“写X章”**，AI 将开始自动批量撰写正文。
+*   *提示：撰写过程中请勿关闭页面。*
+
+### 4. 优化与修缮
+*   **局部润色**：在正文中选中一段文字，点击悬浮的“✨ 润色”按钮。
+*   **全章重写**：点击章节标题栏的“🔄 重写”或“✨ 优化”按钮。
+*   **手动编辑**：点击编辑图标进入沉浸式编辑模式，修改后保存。
+
+### 5. 剧情锚点（解决遗忘）
+*   当对话过长（超过 50 条）时，建议点击顶部的“⚓ 剧情锚点”。
+*   系统会将前文剧情总结为一个高浓度的“记忆包”，释放上下文空间，确保 AI 不会写崩。
+*   可在弹窗中开启“自动锚定”，设置每写 20 章自动执行一次。
+
+---
+
+## 🚀 宝塔面板部署详细操作 (Deployment Guide)
+
+**注意：** 本项目是一个 **React 前端项目**，**不能**直接上传源码运行。必须在本地或服务器上通过 Node.js 进行编译（Build），生成静态文件后才能部署。
+
+### 准备工作
+1.  确保本地已安装 **Node.js** (推荐 v18+)。
+2.  准备好本项目的源码文件。
+
+### 第一步：创建配置文件
+由于源码中可能缺少构建配置，请在项目根目录手动创建以下 3 个文件：
+
+**1. `package.json`**
+```json
+{
+  "name": "inkflow-novel-gen",
+  "version": "1.6.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@google/genai": "^0.1.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-markdown": "^9.0.1",
+    "remark-breaks": "^4.0.0",
+    "remark-gfm": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "autoprefixer": "^10.4.19",
+    "postcss": "^8.4.38",
+    "tailwindcss": "^3.4.4",
+    "typescript": "^5.5.3",
+    "vite": "^5.4.1"
+  }
+}
+```
+
+**2. `vite.config.ts`**
+```ts
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+
+export default defineConfig({
+  plugins: [react()],
+});
+```
+
+**3. `tsconfig.json`**
+```json
+{
+  "files": [],
+  "references": [
+    { "path": "./tsconfig.app.json" },
+    { "path": "./tsconfig.node.json" }
+  ]
+}
+```
+*(注：如果嫌麻烦，可直接使用通用的 React TSConfig，或者确保你的开发环境能自动生成)*
+
+### 第二步：安装依赖并编译
+在项目根目录打开终端（Terminal），执行：
+
+```bash
+# 1. 安装依赖
+npm install
+
+# 2. 执行编译
+npm run build
+```
+
+执行完成后，目录下会生成一个 **`dist`** 文件夹。这个文件夹里的内容就是我们要部署的最终文件。
+
+### 第三步：宝塔面板部署
+1.  **登录宝塔面板** -> 点击左侧 **“网站”** -> **“添加站点”**。
+2.  填写域名（或 IP），提交。
+3.  点击根目录进入文件管理。
+4.  **上传文件**：将本地 **`dist`** 文件夹内的**所有文件**（包含 index.html, assets 文件夹等）上传到服务器的网站根目录。
+    *   *注意：是上传 dist 里面的内容，不是上传 dist 文件夹本身。*
+5.  **访问网站**：在浏览器输入域名即可访问。
+
+### 常见问题排查 (Troubleshooting)
+*   **网页白屏/打不开**：
+    *   检查浏览器控制台 (F12 -> Console)。如果是 `404 Not Found`，通常是因为 Nginx 配置问题。React 是单页应用 (SPA)，需要在 Nginx 配置文件中添加伪静态规则：
+    ```nginx
+    location / {
+      try_files $uri $uri/ /index.html;
+    }
+    ```
+*   **API 请求失败**：
+    *   检查 Settings 中 Base URL 是否正确。如果是 HTTPS 网站调用 HTTP 的 API，会被浏览器拦截（Mixed Content 错误）。请确保 API 地址也是 HTTPS。
+
+---
+
+**InkFlow Team**
+Contact: lyjhxf@126.com

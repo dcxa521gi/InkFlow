@@ -492,7 +492,27 @@ function App() {
   const handleChapterAction = async (action: 'optimize' | 'regenerate' | 'analyze', chapterTitle: string, content: string, messageId: string) => {
       if (isStreaming) return;
       if (action === 'analyze') { await sendMessage(`请分析以下章节：${chapterTitle}...\n${content}`); return; }
-      const prompt = action === 'optimize' ? `请优化润色以下章节：${chapterTitle}...\n${content}` : `请完全重写这一章：${chapterTitle}...\n【要求】字数目标：**${settings.targetWordsPerChapter} 字**以上...`;
+      
+      let prompt = '';
+      if (action === 'optimize') {
+          prompt = `请优化润色以下章节：${chapterTitle}...\n${content}`;
+      } else {
+          // Regenerate - Stronger Word Count Enforcement
+          prompt = `请完全重写这一章：${chapterTitle}。
+
+【🔴 核心指令：强制字数达标】
+目标字数：**${settings.targetWordsPerChapter} 字**。
+请务必严格遵守此字数要求，宁可写长，不可写短。
+
+【扩写指南】
+1. **拒绝流水账**：严禁使用概括性语言跳过剧情。
+2. **细节填充**：请通过大量的环境描写（光影/声音/气味）、细致的动作分解、以及深度的心理活动描写来充实篇幅。
+3. **场景展开**：不要一笔带过，请将本章的关键冲突拆解为具体的画面和对话。
+
+【排版】
+保持 Markdown 格式，标题为 \`## ${chapterTitle}\`。`;
+      }
+      
       await executeOptimization(prompt, content, messageId, 'chapter');
   };
 
@@ -595,15 +615,22 @@ function App() {
               }
               
               const prompt = `请撰写当前目录中下一个尚未撰写的章节正文。
-              【排版要求】
-              1. 必须明确标出章节标题，格式为：\`## 第X章 标题\` (请勿包含 (草稿) 或其他备注)。
-              2. **严禁**在结尾输出 "Options:" 交互选项。
-              3. **严禁**输出任何 "好的"、"这是正文" 等闲聊内容，直接输出小说内容。
 
-              【字数与内容硬性要求】
-              1. 字数目标：**${settings.targetWordsPerChapter} 字**（这是一条硬性红线）。
-              2. 请通过大量的环境描写、心理活动、对话细节来填充内容。切勿写流水账。
-              3. 请将本章内容拆分为至少 3-4 个具体的场景或冲突点，逐一展开描写，不要一笔带过。`;
+【🔴 核心指令：严格执行字数要求】
+本章设定的目标字数为 **${settings.targetWordsPerChapter} 字**。
+作为一个专业小说家，你必须确保输出的内容长度**达到或超过**这一标准。这非常重要！
+
+【如何扩充篇幅 (必读)】
+1. **慢镜头描写**：像电影慢镜头一样描写动作，将一秒钟发生的事情拆解为几百字的描写。
+2. **环境渲染**：不要只写剧情，要花大量笔墨描写环境氛围（光线、气味、温度、声音），以此烘托人物心境。
+3. **心理独白**：深入挖掘角色的内心世界，描写他们的犹豫、恐惧、算计和回忆。
+4. **多回合对话**：增加人物之间的语言交锋，不要一句话把事情说死，要来回拉扯。
+5. **场景拆分**：将本章拆分为 3-4 个具体的子场景，每个场景都要完整展开。
+
+【排版要求】
+1. 必须以 \`## 第X章 标题\` 开头 (请勿包含 (草稿) 或其他备注)。
+2. **严禁**在结尾输出 "Options:" 交互选项。
+3. **严禁**输出任何 "好的"、"这是正文" 等闲聊内容，直接输出小说内容。`;
               
               const userMsg: Message = { id: Date.now().toString(), role: 'user', content: `(自动任务 ${i}/${num}) ${prompt}`, timestamp: Date.now() };
               currentHistory = [...currentHistory, userMsg];
@@ -799,58 +826,47 @@ function App() {
                   
                   <section>
                     <h4 className="font-bold text-gray-900 dark:text-white ec:text-ec-text mb-3 text-base flex items-center gap-2 border-b pb-2 border-gray-100 dark:border-gray-800 ec:border-ec-border">
-                        <span className="text-xl">🚀</span> 核心创作流程 (Core Workflow)
+                        <span className="text-xl">🚀</span> 快速开始 (Quick Start)
                     </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="bg-gray-50 dark:bg-gray-800/50 ec:bg-white p-4 rounded-lg border border-gray-100 dark:border-gray-800 ec:border-ec-border">
-                            <strong className="block text-indigo-600 dark:text-indigo-400 ec:text-ec-accent mb-2">Step 1. 初始化引导</strong>
-                            <p>在对话框输入你想写的故事类型（如“赛博修仙”）。AI 会主动引导你确认**书名、世界观、核心梗概**。</p>
-                        </div>
-                        <div className="bg-gray-50 dark:bg-gray-800/50 ec:bg-white p-4 rounded-lg border border-gray-100 dark:border-gray-800 ec:border-ec-border">
-                            <strong className="block text-indigo-600 dark:text-indigo-400 ec:text-ec-accent mb-2">Step 2. 设定参数</strong>
-                            <p>确认**预计总章节数**和**每章字数**。这些数据会锁定在设置中，AI 生成时会严格遵守。</p>
-                        </div>
-                        <div className="bg-gray-50 dark:bg-gray-800/50 ec:bg-white p-4 rounded-lg border border-gray-100 dark:border-gray-800 ec:border-ec-border">
-                            <strong className="block text-indigo-600 dark:text-indigo-400 ec:text-ec-accent mb-2">Step 3. 批量生成目录</strong>
-                            <p>使用右下角的工具栏，点击“生成目录”或直接发送指令。目录将显示在“章节正文”面板中。</p>
-                        </div>
-                        <div className="bg-gray-50 dark:bg-gray-800/50 ec:bg-white p-4 rounded-lg border border-gray-100 dark:border-gray-800 ec:border-ec-border">
-                            <strong className="block text-indigo-600 dark:text-indigo-400 ec:text-ec-accent mb-2">Step 4. 撰写与修缮</strong>
-                            <p>点击“批量撰写”开始自动写作。生成后可使用 TTS 朗读、<EditIcon/> 编辑或 <SparklesIcon/> 润色。</p>
-                        </div>
-                    </div>
+                    <ol className="list-decimal list-inside space-y-3">
+                        <li><strong>初始化</strong>：在对话框输入想写的故事类型（如“修仙”、“都市”）。AI 会引导你确认【书名】、【世界观】和【核心梗概】。</li>
+                        <li><strong>参数配置</strong>：点击右上角 <SettingsIcon/>，设置【API Key】（支持 OpenAI/DeepSeek 等）、【总章节数】和【单章字数】。</li>
+                        <li><strong>生成大纲</strong>：让 AI 生成角色档案、势力设定和章节大纲。这些内容会自动归档到顶部的“数据库”和“章节”标签页中。</li>
+                        <li><strong>批量写作</strong>：在“章节正文”页底部，点击【生成目录】 -> 【撰写 X 章】，AI 将自动连续创作。</li>
+                    </ol>
                   </section>
 
                   <section>
                       <h4 className="font-bold text-gray-900 dark:text-white ec:text-ec-text mb-3 text-base flex items-center gap-2 border-b pb-2 border-gray-100 dark:border-gray-800 ec:border-ec-border">
-                          <span className="text-xl">⚡</span> 高级功能详解 (Advanced Features)
+                          <span className="text-xl">⚡</span> 高级功能 (Pro Features)
                       </h4>
                       <ul className="space-y-4">
                           <li className="flex gap-3">
                               <div className="mt-1"><SparklesIcon /></div>
                               <div>
                                   <strong className="text-gray-900 dark:text-white ec:text-ec-text">组合写作法 (Snowflake + Save the Cat)</strong>
-                                  <p className="mt-1 opacity-90">
-                                      点击顶部的 <span className="inline-block px-1.5 py-0.5 bg-green-100 text-green-700 rounded text-xs">❄️ 雪花法</span> 按钮。
-                                      启用后按钮变绿，系统将强制使用 **雪花法迭代框架** 配合 **救猫咪节拍表** 进行创作。再次点击可关闭并恢复默认模式。
-                                  </p>
+                                  <p className="mt-1 opacity-90">点击右上角的 <span className="text-green-600 font-bold">❄️ 雪花法</span> 按钮开启。开启后，系统将强制使用“雪花法迭代框架”配合“救猫咪节拍表”进行创作，适合构建严谨的长篇大纲。</p>
                               </div>
                           </li>
                           <li className="flex gap-3">
                               <div className="mt-1">⚓</div>
                               <div>
                                   <strong className="text-gray-900 dark:text-white ec:text-ec-text">剧情锚点 (Context Anchor)</strong>
-                                  <p className="mt-1 opacity-90">
-                                      点击顶部的 <span className="inline-block px-1.5 py-0.5 bg-green-100 text-green-700 rounded text-xs">⚓ 剧情锚点</span> 按钮配置自动化。
-                                      解决 AI “写长了就忘”的问题。当对话过长时，系统会自动或手动触发锚定，将前文剧情压缩成高浓度的“记忆包”。
-                                  </p>
+                                  <p className="mt-1 opacity-90">解决长文遗忘问题。点击 <span className="text-indigo-600 font-bold">⚓ 剧情锚点</span> 可手动压缩上下文。也可在弹窗中开启“自动锚定”，每写 20 章自动触发一次。</p>
                               </div>
                           </li>
                           <li className="flex gap-3">
                               <div className="mt-1">📚</div>
                               <div>
-                                  <strong className="text-gray-900 dark:text-white ec:text-ec-text">MCP 知识库与 SKILL 技能</strong>
-                                  <p className="mt-1 opacity-90">在设置中，你可以定义世界观条目（MCP）或写作技巧（SKILL）。这些设定会默默注入 AI 的上下文中，无需每次手动提及。</p>
+                                  <strong className="text-gray-900 dark:text-white ec:text-ec-text">知识库与技能 (MCP & SKILL)</strong>
+                                  <p className="mt-1 opacity-90">在设置中添加【MCP 知识库】（如“世界观设定”）或【SKILL 技能】（如“环境描写要求”）。这些内容会作为系统指令实时注入，确保 AI 始终遵循设定。</p>
+                              </div>
+                          </li>
+                          <li className="flex gap-3">
+                              <div className="mt-1"><EditIcon /></div>
+                              <div>
+                                  <strong className="text-gray-900 dark:text-white ec:text-ec-text">精修与润色</strong>
+                                  <p className="mt-1 opacity-90">选中正文中的任意段落，点击悬浮的“润色”按钮进行局部优化。或点击章节标题栏的 <span className="text-indigo-600">✨ 优化</span> 按钮对全章进行升格。</p>
                               </div>
                           </li>
                       </ul>
@@ -859,9 +875,9 @@ function App() {
                   <section>
                      <h4 className="font-bold text-gray-900 dark:text-white ec:text-ec-text mb-2 text-base border-b pb-2 border-gray-100 dark:border-gray-800 ec:border-ec-border">❓ 常见问题 (FAQ)</h4>
                      <ul className="list-disc list-inside space-y-2 opacity-90 pl-2">
-                         <li><strong>如何复制内容？</strong> <br/><span className="text-xs ml-5 block text-gray-500">将鼠标悬停在对话气泡上，点击右上角的复制图标即可。</span></li>
-                         <li><strong>生成过程中卡顿/内存占用高？</strong> <br/><span className="text-xs ml-5 block text-gray-500">v1.4.0 已引入节流机制优化性能。若仍卡顿，建议使用“剧情锚点”清理上下文。</span></li>
-                         <li><strong>护眼模式颜色不对？</strong> <br/><span className="text-xs ml-5 block text-gray-500">请确保使用的是 v1.5.0 及以上版本，我们已修复了全站的护眼配色覆盖。</span></li>
+                         <li><strong>为什么网页打不开？</strong> <br/><span className="text-xs ml-5 block text-gray-500">本应用是 React 项目，必须使用 `npm run build` 编译后才能部署到 Nginx/宝塔。直接上传源码无法运行。详情请阅读 README.md 中的部署指南。</span></li>
+                         <li><strong>生成的内容太短怎么办？</strong> <br/><span className="text-xs ml-5 block text-gray-500">请在设置中调高“每章目标字数”，并确保 AI 模型（如 GPT-4o）有足够的输出能力。v1.6.0 已针对扩写进行了指令优化。</span></li>
+                         <li><strong>如何导出小说？</strong> <br/><span className="text-xs ml-5 block text-gray-500">在“章节正文”页右上角点击下载图标，支持 Word, TXT, Markdown 格式。</span></li>
                      </ul>
                   </section>
                </div>
@@ -890,10 +906,10 @@ function App() {
                                </div>
                                <span className="text-xs text-gray-400 mb-2">2024-06-20</span>
                                <ul className="text-sm text-gray-600 dark:text-gray-300 ec:text-ec-text space-y-1.5 list-disc list-inside">
-                                   <li>🏗️ <strong>雪花法开关</strong>：右上角新增独立开关，绿色开启，灰色关闭，一键切换组合写作模式。</li>
-                                   <li>🧹 <strong>界面净化</strong>：移除聊天中繁琐的“注入上下文”提示，体验更沉浸。</li>
-                                   <li>📋 <strong>复制反馈</strong>：聊天气泡新增复制成功提示。</li>
-                                   <li>🎨 <strong>状态显色</strong>：启用中的功能（如锚点、雪花法）现在有明显的绿色高亮区分。</li>
+                                   <li>🏗️ <strong>雪花法开关</strong>：右上角新增独立开关，一键切换组合写作模式。</li>
+                                   <li>🧹 <strong>界面净化</strong>：移除干扰信息，优化上下文注入逻辑。</li>
+                                   <li>📋 <strong>复制反馈</strong>：增加复制成功提示。</li>
+                                   <li>📝 <strong>扩写增强</strong>：强制 AI 遵守字数限制，优化场景描写指令。</li>
                                </ul>
                            </div>
                        </div>
@@ -902,16 +918,56 @@ function App() {
                        <div className="relative pl-6">
                            <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-purple-500 border-4 border-white dark:border-gray-900 ec:border-ec-bg"></div>
                            <div className="flex flex-col gap-1">
-                               <div className="flex items-center gap-2">
-                                   <h4 className="font-bold text-gray-900 dark:text-white ec:text-ec-text">v1.5.0 - 体验与方法论升级</h4>
-                               </div>
+                               <h4 className="font-bold text-gray-900 dark:text-white ec:text-ec-text">v1.5.0 - 体验与方法论升级</h4>
                                <span className="text-xs text-gray-400 mb-2">2024-06-15</span>
                                <ul className="text-sm text-gray-600 dark:text-gray-300 ec:text-ec-text space-y-1.5 list-disc list-inside">
-                                   <li>🏗️ <strong>组合写作法</strong>：引入“雪花法 + 救猫咪节拍表”双重引擎。</li>
-                                   <li>👁️ <strong>视觉优化</strong>：全站字号升级（最小16px），修复护眼模式。</li>
+                                   <li>引入“雪花法 + 救猫咪节拍表”双重引擎。</li>
+                                   <li>全站字号升级与护眼模式修复。</li>
                                </ul>
                            </div>
                        </div>
+
+                       {/* v1.4.0 */}
+                       <div className="relative pl-6">
+                           <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-blue-500 border-4 border-white dark:border-gray-900 ec:border-ec-bg"></div>
+                           <div className="flex flex-col gap-1">
+                               <h4 className="font-bold text-gray-900 dark:text-white ec:text-ec-text">v1.4.0 - 深度优化版</h4>
+                               <span className="text-xs text-gray-400 mb-2">2024-06-01</span>
+                               <ul className="text-sm text-gray-600 dark:text-gray-300 ec:text-ec-text space-y-1.5 list-disc list-inside">
+                                   <li>性能优化，引入生成节流。</li>
+                                   <li>新增 SKILL 写作技能系统。</li>
+                                   <li>支持自定义网站信息与二维码。</li>
+                               </ul>
+                           </div>
+                       </div>
+
+                       {/* v1.3.0 */}
+                       <div className="relative pl-6">
+                           <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-gray-300 border-4 border-white dark:border-gray-900 ec:border-ec-bg"></div>
+                           <div className="flex flex-col gap-1">
+                               <h4 className="font-bold text-gray-900 dark:text-white ec:text-ec-text">v1.3.0 - 体验升级版</h4>
+                               <span className="text-xs text-gray-400 mb-2">2024-05-22</span>
+                               <ul className="text-sm text-gray-600 dark:text-gray-300 ec:text-ec-text space-y-1.5 list-disc list-inside">
+                                   <li>新增 TTS 语音朗读功能。</li>
+                                   <li>支持章节正文直接编辑。</li>
+                               </ul>
+                           </div>
+                       </div>
+
+                       {/* v1.0.0 - 1.2.0 */}
+                       <div className="relative pl-6">
+                           <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-gray-200 border-4 border-white dark:border-gray-900 ec:border-ec-bg"></div>
+                           <div className="flex flex-col gap-1 opacity-70">
+                               <h4 className="font-bold text-gray-900 dark:text-white ec:text-ec-text">v1.0.0 - v1.2.0 早期版本</h4>
+                               <span className="text-xs text-gray-400 mb-2">2024-04</span>
+                               <ul className="text-sm text-gray-600 dark:text-gray-300 ec:text-ec-text space-y-1.5 list-disc list-inside">
+                                   <li>基础对话与小说分栏视图。</li>
+                                   <li>多模型支持与参数设置。</li>
+                                   <li>本地书库与存档管理。</li>
+                               </ul>
+                           </div>
+                       </div>
+
                    </div>
                </div>
             </div>

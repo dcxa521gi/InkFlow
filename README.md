@@ -1,12 +1,7 @@
 
 # InkFlow Novel Generator (AI 小说创作助手)
 
-InkFlow 是一款基于 React 和 AI 大模型（OpenAI/Gemini）的现代化小说辅助创作工具。它采用独特的“对话+正文”分屏设计，结合了雪花写作法、剧情锚点和自动化长文生成技术，旨在帮助作者打破创作瓶颈，高效产出高质量网文。因为自己使用比较多，所以写了这个可以应用，你如果使用请自行分支并修改，本人不做任何承诺，更新全看心情。
-## 🏠首页样式
-<img width="2074" height="1132" alt="ScreenShot_2026-02-05_120342_142" src="https://github.com/user-attachments/assets/d5c44ba0-d2de-43cf-9046-e3e8af929d4f" />
-
-## 🛰开发者微信
-<img width="1657" height="857" alt="image" src="https://github.com/user-attachments/assets/d08474c3-4625-4793-ad77-43f1ca950a7f" />
+InkFlow 是一款基于 React 和 AI 大模型（OpenAI/Gemini）的现代化小说辅助创作工具。它采用独特的“对话+正文”分屏设计，结合了雪花写作法、剧情锚点和自动化长文生成技术，旨在帮助作者打破创作瓶颈，高效产出高质量网文。
 
 ## 🌟 核心特性
 
@@ -98,8 +93,11 @@ InkFlow 是一款基于 React 和 AI 大模型（OpenAI/Gemini）的现代化小
 1.  确保本地已安装 **Node.js** (推荐 v18+)。
 2.  准备好本项目的源码文件。
 
-### 第一步：创建配置文件
-由于源码中可能缺少构建配置，请在项目根目录手动创建以下 3 个文件：
+### 第一步：确认构建配置
+本项目已包含构建所需的配置文件（`package.json`, `vite.config.ts`, `tsconfig.json`）。请确保根目录下存在这些文件。
+
+**关键配置说明 (Reference)**：
+若您需要手动修改，请重点关注 `vite.config.ts` 中的 `base` 配置，这决定了静态资源能否在宝塔子目录下正常加载。
 
 **1. `package.json`**
 ```json
@@ -109,7 +107,7 @@ InkFlow 是一款基于 React 和 AI 大模型（OpenAI/Gemini）的现代化小
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -124,9 +122,6 @@ InkFlow 是一款基于 React 和 AI 大模型（OpenAI/Gemini）的现代化小
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",
-    "autoprefixer": "^10.4.19",
-    "postcss": "^8.4.38",
-    "tailwindcss": "^3.4.4",
     "typescript": "^5.5.3",
     "vite": "^5.4.1"
   }
@@ -140,20 +135,39 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
+  base: './', // 关键配置：确保资源使用相对路径，适配宝塔/静态托管
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
+    sourcemap: false,
+  },
 });
 ```
 
 **3. `tsconfig.json`**
 ```json
 {
-  "files": [],
-  "references": [
-    { "path": "./tsconfig.app.json" },
-    { "path": "./tsconfig.node.json" }
-  ]
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["**/*.ts", "**/*.tsx"],
+  "exclude": ["node_modules"]
 }
 ```
-*(注：如果嫌麻烦，可直接使用通用的 React TSConfig，或者确保你的开发环境能自动生成)*
 
 ### 第二步：安装依赖并编译
 在项目根目录打开终端（Terminal），执行：
@@ -192,6 +206,4 @@ npm run build
 ---
 
 **InkFlow Team**
-***邮箱: lyjhxf@126.com
-***微信：Sugar_hyl
-***不保质不保量，仅个人使用，优化全看心情。
+Contact: lyjhxf@126.com

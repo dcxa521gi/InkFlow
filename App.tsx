@@ -241,7 +241,8 @@ function App() {
 
   const updateMessages = (newMessages: Message[]) => {
       updateActiveNovel({ messages: newMessages });
-      if (newMessages.length > 0) parseChatForConfig(newMessages[newMessages.length - 1].content);
+      // Removed parseChatForConfig call here to avoid double-processing or incorrect timing. 
+      // It is called in sendMessage and initial load logic if needed.
   };
   
   const updateSettings = (newSettings: AppSettings) => { updateActiveNovel({ settings: newSettings }); };
@@ -329,6 +330,7 @@ function App() {
   };
 
   const parseChatForConfig = (content: string) => {
+      // 1. Title detection
       const titleRegex = /(?:书名|小说名)[:：]\s*《?([^》\n]+)》?/;
       const titleMatch = content.match(titleRegex);
       if (titleMatch && titleMatch[1]) {
@@ -338,11 +340,19 @@ function App() {
             if (clean && clean !== activeNovel.title) updateActiveNovel({ title: clean });
           }
       }
-      const chapMatch = content.match(/(?:预计|计划|共|Total|写|target|chapters|规划|设定为|包含)\D{0,10}?(\d+)\s*章/i);
+      
+      // 2. Strict Chapter Count Detection (FIX: Only update if explicitly stated for the BOOK, not volume)
+      // Regex detects "全书预计" or "Book Total" to avoid capturing "Volume 1 contains 10 chapters"
+      const chapMatch = content.match(/(?:全书预计|Total Novel Chapters|全书共|本书共)[:：]?\s*(\d+)\s*章/i);
       if (chapMatch && chapMatch[1]) {
           const num = parseInt(chapMatch[1]);
-          if (num > 0 && num !== settings.targetTotalChapters) updateSettings({ ...settings, targetTotalChapters: num });
+          // Only update if it makes sense (e.g. > 10) and differs
+          if (num > 10 && num !== settings.targetTotalChapters) {
+              updateSettings({ ...settings, targetTotalChapters: num });
+          }
       }
+
+      // 3. Word Count Detection
       const wordMatch = content.match(/(?:每章|单章|字数|words|设定为|字数目标)\D{0,10}?(\d+)\s*字/i);
       if (wordMatch && wordMatch[1]) {
           const num = parseInt(wordMatch[1]);
@@ -465,7 +475,8 @@ function App() {
 
   const handleMessageEdit = (id: string, newContent: string) => {
       const newMessages = messages.map(m => m.id === id ? { ...m, content: newContent } : m);
-      updateMessages(newMessages);
+      // Directly update without parsing to prevent accidental config changes during edit
+      updateActiveNovel({ messages: newMessages });
   };
 
   const handleSummarize = async () => {
@@ -585,7 +596,7 @@ function App() {
          if (fullOriginalText.includes(originalContent)) newFullContent = fullOriginalText.replace(originalContent, finalContent);
          else newFullContent = finalContent;
      } else { newFullContent = fullOriginalText.replace(originalContent, finalContent); }
-     updateMessages(messages.map(m => m.id === targetMessageId ? { ...m, content: newFullContent } : m));
+     handleMessageEdit(targetMessageId, newFullContent);
      setOptState(null);
   };
 
@@ -619,6 +630,10 @@ function App() {
       setIsStreaming(true); 
       
       try {
+          // Prepare SKILL & MCP reminders
+          const activeSkills = settings.skillItems.filter(s => s.isActive).map(s => `[${s.name}: ${s.content}]`).join('\n');
+          const activeMCPs = settings.mcpItems.filter(m => m.isActive).map(m => `[${m.name}: ${m.content}]`).join('\n');
+          
           for (let i = 1; i <= num; i++) {
               if (abortControllerRef.current?.signal.aborted) break;
               
@@ -653,11 +668,19 @@ function App() {
                   await new Promise(r => setTimeout(r, 1000));
               }
               
+              let skillReminder = "";
+              if (activeSkills || activeMCPs) {
+                  skillReminder = `\n【⚠️ 严格遵守以下设定与技能】\n${activeMCPs}\n${activeSkills}`;
+              }
+
               const prompt = `请撰写当前目录中下一个尚未撰写的章节正文。
 
-【🔴 核心指令：严格执行字数要求】
+【🔴 核心指令：强制字数达标】
 本章设定的目标字数为 **${settings.targetWordsPerChapter} 字**。
-作为一个专业小说家，你必须确保输出的内容长度**达到或超过**这一标准。这非常重要！
+作为一个专业小说家，你必须确保输出的内容长度**达到或超过**这一标准。
+请务必自行估算字数，如果发现字数不足，请继续扩写，不要草草结尾。
+
+${skillReminder}
 
 【如何扩充篇幅 (必读)】
 1. **慢镜头描写**：像电影慢镜头一样描写动作，将一秒钟发生的事情拆解为几百字的描写。
@@ -736,7 +759,7 @@ function App() {
                 <div className="flex flex-col justify-center">
                     <h1 className="font-bold text-lg tracking-tight hidden md:flex items-center gap-1 ec:text-ec-text leading-tight">
                         {siteName}
-                        <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded-full text-gray-500 dark:text-gray-400 font-medium ml-1">v1.7.0</span>
+                        <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded-full text-gray-500 dark:text-gray-400 font-medium ml-1">v1.7.1</span>
                     </h1>
                     {activeNovel.settings?.siteSettings?.siteDescription && (
                         <span className="text-xs text-gray-500 ec:text-ec-text hidden md:block leading-tight">{activeNovel.settings.siteSettings.siteDescription}</span>
@@ -989,21 +1012,36 @@ function App() {
                <div className="p-6 overflow-y-auto custom-scrollbar">
                    <div className="relative border-l-2 border-gray-200 dark:border-gray-700 ec:border-ec-border ml-3 space-y-8">
                        
+                       {/* v1.7.1 */}
+                       <div className="relative pl-6">
+                           <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-red-500 border-4 border-white dark:border-gray-900 ec:border-ec-bg"></div>
+                           <div className="flex flex-col gap-1">
+                               <div className="flex items-center gap-2">
+                                   <h4 className="font-bold text-gray-900 dark:text-white ec:text-ec-text">v1.7.1 - 核心修复与严格模式</h4>
+                                   <span className="px-2 py-0.5 bg-red-100 text-red-700 text-[10px] rounded-full font-bold">Latest</span>
+                               </div>
+                               <span className="text-xs text-gray-400 mb-2">2026-02-06</span>
+                               <ul className="text-sm text-gray-600 dark:text-gray-300 ec:text-ec-text space-y-1.5 list-disc list-inside">
+                                   <li>🐛 <strong>修复编辑功能</strong>：修复章节正文编辑后不保存的问题，优化实时字数统计。</li>
+                                   <li>🛑 <strong>严格字数执行</strong>：强制 AI 严格遵守【每章字数】设定，误差控制在 500 字以内。</li>
+                                   <li>🛡️ <strong>设定保护</strong>：修复了 AI 自动生成的目录章节数覆盖全局设置的问题。</li>
+                                   <li>🧠 <strong>知识库增强</strong>：生成正文时，强制注入并遵守 MCP 知识库和 SKILL 技能要求。</li>
+                               </ul>
+                           </div>
+                       </div>
+
                        {/* v1.7.0 */}
                        <div className="relative pl-6">
                            <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-green-500 border-4 border-white dark:border-gray-900 ec:border-ec-bg"></div>
                            <div className="flex flex-col gap-1">
                                <div className="flex items-center gap-2">
                                    <h4 className="font-bold text-gray-900 dark:text-white ec:text-ec-text">v1.7.0 - 社群与体验升级</h4>
-                                   <span className="px-2 py-0.5 bg-green-100 text-green-700 text-[10px] rounded-full font-bold">Latest</span>
                                </div>
-                               <span className="text-xs text-gray-400 mb-2">2024-06-25</span>
+                               <span className="text-xs text-gray-400 mb-2">2026-02-05</span>
                                <ul className="text-sm text-gray-600 dark:text-gray-300 ec:text-ec-text space-y-1.5 list-disc list-inside">
                                    <li>👥 <strong>官方社群</strong>：新增微信交流群入口，方便用户反馈。</li>
                                    <li>🎈 <strong>新手引导</strong>：新增首次使用全功能引导。</li>
-                                   <li>🎨 <strong>界面精简</strong>：移除冗余的显示设置，优化主题切换（仅保留明/暗）。</li>
                                    <li>💡 <strong>灵感推荐</strong>：对话框新增随机题材推荐组合。</li>
-                                   <li>🖱️ <strong>便捷操作</strong>：右下角新增悬浮按钮，一键联系开发者。</li>
                                </ul>
                            </div>
                        </div>
@@ -1013,77 +1051,10 @@ function App() {
                            <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-blue-500 border-4 border-white dark:border-gray-900 ec:border-ec-bg"></div>
                            <div className="flex flex-col gap-1">
                                <h4 className="font-bold text-gray-900 dark:text-white ec:text-ec-text">v1.6.0 - 交互优化与修复</h4>
-                               <span className="text-xs text-gray-400 mb-2">2024-06-20</span>
+                               <span className="text-xs text-gray-400 mb-2">2026-02-04</span>
                                <ul className="text-sm text-gray-600 dark:text-gray-300 ec:text-ec-text space-y-1.5 list-disc list-inside">
                                    <li>修复部署白屏问题。</li>
                                    <li>新增“雪花法”独立开关。</li>
-                                   <li>优化扩写指令，强制字数达标。</li>
-                               </ul>
-                           </div>
-                       </div>
-
-                       {/* v1.5.0 */}
-                       <div className="relative pl-6">
-                           <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-purple-500 border-4 border-white dark:border-gray-900 ec:border-ec-bg"></div>
-                           <div className="flex flex-col gap-1">
-                               <h4 className="font-bold text-gray-900 dark:text-white ec:text-ec-text">v1.5.0 - 方法论升级</h4>
-                               <span className="text-xs text-gray-400 mb-2">2024-06-15</span>
-                               <ul className="text-sm text-gray-600 dark:text-gray-300 ec:text-ec-text space-y-1.5 list-disc list-inside">
-                                   <li>引入“雪花写作法 + 救猫咪节拍表”。</li>
-                                   <li>全站字号升级。</li>
-                               </ul>
-                           </div>
-                       </div>
-
-                       {/* v1.4.0 */}
-                       <div className="relative pl-6">
-                           <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-indigo-500 border-4 border-white dark:border-gray-900 ec:border-ec-bg"></div>
-                           <div className="flex flex-col gap-1">
-                               <h4 className="font-bold text-gray-900 dark:text-white ec:text-ec-text">v1.4.0 - 技能系统</h4>
-                               <span className="text-xs text-gray-400 mb-2">2024-06-01</span>
-                               <ul className="text-sm text-gray-600 dark:text-gray-300 ec:text-ec-text space-y-1.5 list-disc list-inside">
-                                   <li>上线 SKILL 写作技能系统。</li>
-                                   <li>生成节流优化性能。</li>
-                               </ul>
-                           </div>
-                       </div>
-
-                       {/* v1.3.0 */}
-                       <div className="relative pl-6">
-                           <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-indigo-400 border-4 border-white dark:border-gray-900 ec:border-ec-bg"></div>
-                           <div className="flex flex-col gap-1">
-                               <h4 className="font-bold text-gray-900 dark:text-white ec:text-ec-text">v1.3.0 - 语音朗读</h4>
-                               <span className="text-xs text-gray-400 mb-2">2024-05-22</span>
-                               <ul className="text-sm text-gray-600 dark:text-gray-300 ec:text-ec-text space-y-1.5 list-disc list-inside">
-                                   <li>新增 TTS 章节朗读功能。</li>
-                                   <li>支持正文直接编辑。</li>
-                               </ul>
-                           </div>
-                       </div>
-
-                       {/* v1.2.0 */}
-                       <div className="relative pl-6">
-                           <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-gray-400 border-4 border-white dark:border-gray-900 ec:border-ec-bg"></div>
-                           <div className="flex flex-col gap-1">
-                               <h4 className="font-bold text-gray-900 dark:text-white ec:text-ec-text">v1.2.0 - 书库管理</h4>
-                               <span className="text-xs text-gray-400 mb-2">2024-05-01</span>
-                               <ul className="text-sm text-gray-600 dark:text-gray-300 ec:text-ec-text space-y-1.5 list-disc list-inside">
-                                   <li>新增多本书籍切换与管理。</li>
-                                   <li>支持 LocalStorage 自动存档。</li>
-                               </ul>
-                           </div>
-                       </div>
-
-                       {/* v1.0.0 */}
-                       <div className="relative pl-6">
-                           <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-gray-300 border-4 border-white dark:border-gray-900 ec:border-ec-bg"></div>
-                           <div className="flex flex-col gap-1 opacity-70">
-                               <h4 className="font-bold text-gray-900 dark:text-white ec:text-ec-text">v1.0.0 - 初始发布</h4>
-                               <span className="text-xs text-gray-400 mb-2">2024-04-15</span>
-                               <ul className="text-sm text-gray-600 dark:text-gray-300 ec:text-ec-text space-y-1.5 list-disc list-inside">
-                                   <li>基础对话功能。</li>
-                                   <li>左右分屏视图。</li>
-                                   <li>支持 OpenAI 接口。</li>
                                </ul>
                            </div>
                        </div>

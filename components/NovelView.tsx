@@ -485,7 +485,7 @@ const NovelView: React.FC<NovelViewProps> = ({
       return `${gender} ${label}`.trim();
   };
 
-  // --- Edit Handling ---
+  // --- Edit Handling (Enhanced) ---
   const handleEditClick = (chapter: Chapter) => {
       setEditingChapter({
           messageId: chapter.messageId,
@@ -500,8 +500,32 @@ const NovelView: React.FC<NovelViewProps> = ({
           // Find the original message
           const originalMessage = messages.find(m => m.id === editingChapter.messageId);
           if (originalMessage) {
-              const newFullContent = originalMessage.content.replace(editingChapter.originalContent, editingChapter.content);
-              onMessageEdit(editingChapter.messageId, newFullContent);
+              // Enhanced replacement logic:
+              // 1. Try exact match first
+              let newFullContent = originalMessage.content.replace(editingChapter.originalContent, editingChapter.content);
+              
+              // 2. If exact match fails (due to whitespace or hidden chars), try matching by title header
+              if (newFullContent === originalMessage.content) {
+                  // Construct regex to find "## Title" and replace content until next ## or End
+                  // Escape regex special chars in title
+                  const escapedTitle = editingChapter.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                  // Regex: (## Title\s*\n)(capture content)((?:\n##|$))
+                  const regex = new RegExp(`(##\\s*${escapedTitle}\\s*\\n)([\\s\\S]*?)(?=\\n##|$)`, 'i');
+                  
+                  // Check if content matches what we expected loosely
+                  const match = originalMessage.content.match(regex);
+                  if (match) {
+                       newFullContent = originalMessage.content.replace(match[0], `${match[1]}${editingChapter.content}`);
+                  } else {
+                       // Fallback: Just append if we can't find it (unlikely for chapters)
+                       console.warn("Could not find exact location to replace. Saving failed.");
+                       // Optional: Force a notification here
+                  }
+              }
+
+              if (newFullContent !== originalMessage.content) {
+                   onMessageEdit(editingChapter.messageId, newFullContent);
+              }
           }
       }
       setEditingChapter(null);
@@ -528,7 +552,11 @@ const NovelView: React.FC<NovelViewProps> = ({
                           </div>
                           <div>
                               <h2 className="text-lg font-bold text-gray-900 dark:text-white ec:text-ec-text">编辑章节正文 (Edit Chapter)</h2>
-                              <div className="text-xs text-gray-500 ec:text-ec-text opacity-80">{editingChapter.title}</div>
+                              <div className="flex items-center gap-2 text-xs text-gray-500 ec:text-ec-text opacity-80">
+                                  <span>{editingChapter.title}</span>
+                                  <span className="w-px h-3 bg-gray-300"></span>
+                                  <span>实时字数: <strong className="text-indigo-600 dark:text-indigo-400">{editingChapter.content.length}</strong></span>
+                              </div>
                           </div>
                       </div>
                       <button onClick={() => setEditingChapter(null)} className="text-gray-500 hover:text-gray-900 dark:hover:text-white ec:text-ec-text">

@@ -2,6 +2,11 @@
 # InkFlow Novel Generator (AI 小说创作助手)
 
 InkFlow 是一款基于 React 和 AI 大模型（OpenAI/Gemini）的现代化小说辅助创作工具。它采用独特的“对话+正文”分屏设计，结合了雪花写作法、剧情锚点和自动化长文生成技术，旨在帮助作者打破创作瓶颈，高效产出高质量网文。因为自己使用比较多，所以写了这个可以应用，你如果使用请自行分支并修改，本人不做任何承诺，更新全看心情。
+## 🏠首页样式
+<img width="2074" height="1132" alt="ScreenShot_2026-02-05_120342_142" src="https://github.com/user-attachments/assets/d5c44ba0-d2de-43cf-9046-e3e8af929d4f" />
+
+## 🛰开发者微信
+<img width="1657" height="857" alt="image" src="https://github.com/user-attachments/assets/d08474c3-4625-4793-ad77-43f1ca950a7f" />
 
 ## 🌟 核心特性
 

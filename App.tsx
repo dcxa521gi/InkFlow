@@ -846,7 +846,7 @@ function App() {
                   <div className="p-8 text-center ec:text-ec-text flex flex-col items-center gap-5">
                       <div className="relative group">
                           <div className="absolute -inset-1 bg-gradient-to-tr from-indigo-500 to-purple-600 rounded-lg blur opacity-25 group-hover:opacity-50 transition duration-1000"></div>
-                          <img src="/images/weixin.jpg" alt="WeChat QR" className="relative w-48 h-48 object-cover border-4 border-white dark:border-gray-800 rounded-lg shadow-sm" />
+                          <img src="images/weixin.jpg" alt="WeChat QR" className="relative w-48 h-48 object-cover border-4 border-white dark:border-gray-800 rounded-lg shadow-sm" />
                       </div>
                       <div className="space-y-1">
                           <p className="text-sm font-bold text-gray-800 dark:text-white">扫码添加开发者好友</p>
@@ -926,7 +926,7 @@ function App() {
                <div className="p-8 overflow-y-auto space-y-8 text-sm text-gray-600 dark:text-gray-300 ec:text-ec-text leading-relaxed">
                   
                   <section className="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-xl border border-indigo-100 dark:border-indigo-800 flex items-start gap-4">
-                      <img src="/images/weixin.jpg" alt="WeChat QR" className="w-24 h-24 object-cover rounded-lg shrink-0 border" />
+                      <img src="images/weixin.jpg" alt="WeChat QR" className="w-24 h-24 object-cover rounded-lg shrink-0 border" />
                       <div>
                           <h4 className="font-bold text-indigo-700 dark:text-indigo-300 text-base mb-1">加入官方交流群</h4>
                           <p className="text-gray-600 dark:text-gray-300 mb-2">扫描左侧二维码添加开发者好友，备注 "InkFlow"，邀请您进入微信交流群，获取最新更新与写作技巧。</p>

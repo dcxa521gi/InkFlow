@@ -11,7 +11,7 @@ interface SettingsModalProps {
   onSave: (newSettings: AppSettings) => void;
 }
 
-type Tab = 'general' | 'prompt' | 'mcp' | 'skills' | 'site';
+type Tab = 'general' | 'prompt' | 'mcp' | 'skills';
 
 const PRESETS = [
   { name: 'DeepSeek', url: 'https://api.deepseek.com', model: 'deepseek-chat' },
@@ -76,16 +76,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
     setLocalSettings(prev => ({ ...prev, [key]: value }));
   };
   
-  const handleSiteChange = (key: keyof AppSettings['siteSettings'], value: any) => {
-      setLocalSettings(prev => ({
-          ...prev,
-          siteSettings: {
-              ...prev.siteSettings,
-              [key]: value
-          }
-      }));
-  };
-
   const applyPreset = (preset: typeof PRESETS[0]) => {
       if (preset.name === '自定义') return;
       setLocalSettings(prev => ({
@@ -157,18 +147,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
   };
   const deleteSkillItem = (id: string) => handleChange('skillItems', (localSettings.skillItems || []).filter(item => item.id !== id));
   
-  // Image Upload
-  const handleQrUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (file) {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-              handleSiteChange('contactQrCode', reader.result as string);
-          };
-          reader.readAsDataURL(file);
-      }
-  };
-
   const navClass = (tab: Tab) => `text-left px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === tab ? 'bg-indigo-600 text-white' : 'text-gray-600 dark:text-gray-400 ec:text-ec-text hover:bg-gray-200 dark:hover:bg-gray-900 ec:hover:bg-ec-surface hover:text-gray-900 dark:hover:text-white'}`;
 
   return (
@@ -203,7 +181,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
             <button onClick={() => setActiveTab('prompt')} className={navClass('prompt')}>预置参数 / 人设</button>
             <button onClick={() => setActiveTab('mcp')} className={navClass('mcp')}>MCP 知识库</button>
             <button onClick={() => setActiveTab('skills')} className={navClass('skills')}>⚡ SKILL 技能</button>
-            <button onClick={() => setActiveTab('site')} className={navClass('site')}>🌐 网站/显示</button>
           </div>
 
           {/* Content Area */}
@@ -394,50 +371,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
                    ))}
                 </div>
               </div>
-            )}
-
-            {/* Site Tab */}
-            {activeTab === 'site' && (
-                <div className="space-y-6">
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-white ec:text-ec-text">🌐 网站与显示设置</h3>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 ec:text-ec-text mb-1">网站名称</label>
-                           <input type="text" value={localSettings.siteSettings?.siteName || 'InkFlow'} onChange={(e) => handleSiteChange('siteName', e.target.value)} className="w-full bg-gray-50 dark:bg-gray-800 ec:bg-white border border-gray-300 dark:border-gray-700 ec:border-ec-border rounded-lg px-4 py-2 text-gray-900 dark:text-white ec:text-ec-text focus:ring-2 focus:ring-indigo-500 focus:outline-none"/>
-                        </div>
-                        <div>
-                           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 ec:text-ec-text mb-1">网站简介/Slogan</label>
-                           <input type="text" value={localSettings.siteSettings?.siteDescription || ''} onChange={(e) => handleSiteChange('siteDescription', e.target.value)} className="w-full bg-gray-50 dark:bg-gray-800 ec:bg-white border border-gray-300 dark:border-gray-700 ec:border-ec-border rounded-lg px-4 py-2 text-gray-900 dark:text-white ec:text-ec-text focus:ring-2 focus:ring-indigo-500 focus:outline-none"/>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 ec:text-ec-text mb-2">
-                            整站正文字号: {localSettings.siteSettings?.defaultFontSize || 16}px
-                        </label>
-                        <input 
-                            type="range" min="14" max="28" step="1"
-                            value={localSettings.siteSettings?.defaultFontSize || 16}
-                            onChange={(e) => handleSiteChange('defaultFontSize', parseInt(e.target.value))}
-                            className="w-full h-2 bg-gray-200 dark:bg-gray-700 ec:bg-ec-border rounded-lg appearance-none cursor-pointer"
-                        />
-                        <div className="flex justify-between text-xs text-gray-500 mt-1">
-                            <span>14px (最小)</span>
-                            <span>28px (最大)</span>
-                        </div>
-                    </div>
-
-                    <div className="border-t border-gray-200 dark:border-gray-800 ec:border-ec-border pt-4">
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 ec:text-ec-text mb-2">联系开发者二维码 (上传图片)</label>
-                        <div className="flex items-center gap-4">
-                            <input type="file" accept="image/*" onChange={handleQrUpload} className="text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" />
-                            {localSettings.siteSettings?.contactQrCode && (
-                                <img src={localSettings.siteSettings.contactQrCode} alt="QR Preview" className="w-16 h-16 object-cover border rounded-lg" />
-                            )}
-                        </div>
-                    </div>
-                </div>
             )}
 
           </div>

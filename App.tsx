@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import ChatArea from './components/ChatArea';
 import NovelView from './components/NovelView';
@@ -8,7 +9,7 @@ import AnchorModal from './components/AnchorModal';
 import { generateStreamResponse } from './services/aiService';
 import { Message, AppSettings, ViewMode, NovelSession, OptimizationState, AnchorConfig } from './types';
 import { DEFAULT_SETTINGS } from './constants';
-import { SettingsIcon, BookOpenIcon, MessageSquareIcon, MailIcon, SunIcon, MoonIcon, EyeIcon, XIcon, LibraryIcon, HelpCircleIcon, HistoryIcon, EditIcon, SparklesIcon, SpeakerIcon } from './components/Icons';
+import { SettingsIcon, BookOpenIcon, MessageSquareIcon, MailIcon, SunIcon, MoonIcon, EyeIcon, XIcon, LibraryIcon, HelpCircleIcon, HistoryIcon, EditIcon, SparklesIcon, SpeakerIcon, UserIcon } from './components/Icons';
 
 // Helper to clean titles
 const cleanTitle = (rawTitle: string) => {
@@ -117,6 +118,27 @@ function App() {
       return '';
   });
 
+  // Welcome Modal State
+  const [isWelcomeOpen, setIsWelcomeOpen] = useState(false);
+  const [welcomeStep, setWelcomeStep] = useState(0);
+
+  const welcomeSteps = [
+    { title: "欢迎使用 InkFlow", icon: "👋", content: "这是一款专为网文作者打造的 AI 辅助创作工具，结合了对话创作与大纲管理的双屏体验。" },
+    { title: "第一步：配置模型", icon: "⚙️", content: "点击右上角的设置图标。填入你的 API Key (支持 OpenAI/DeepSeek) 并设定小说篇幅目标。" },
+    { title: "第二步：对话构思", icon: "💡", content: "在左侧对话框与 AI 聊天。确定书名、大纲、角色设定。AI 生成的内容会自动归档到右侧数据库。" },
+    { title: "第三步：正文写作", icon: "✍️", content: "切换到右侧【章节正文】标签。点击生成目录，然后使用【批量撰写】功能快速产出正文。" },
+    { title: "第四步：防止遗忘", icon: "🧠", content: "遇到长文遗忘？点击右上角的【⚓ 剧情锚点】压缩上下文。需要严谨结构？开启【❄️ 雪花法】模式。" },
+    { title: "加入社区", icon: "👨‍👩‍👧‍👦", content: "点击右下角浮窗或联系开发者，加入 InkFlow 微信交流群，获取更多写作技巧！" }
+  ];
+
+  useEffect(() => {
+      const visited = localStorage.getItem('inkflow_visited');
+      if (!visited) {
+          setIsWelcomeOpen(true);
+          localStorage.setItem('inkflow_visited', 'true');
+      }
+  }, []);
+
   useEffect(() => {
       if (novels.length === 0) setNovels([createDefaultNovel()]);
       else if (!currentNovelId && novels.length > 0) setCurrentNovelId(novels[0].id);
@@ -145,10 +167,11 @@ function App() {
   const [inputValue, setInputValue] = useState('');
   const abortControllerRef = useRef<AbortController | null>(null);
   
-  // Theme state: 'light' | 'eye-care' | 'dark'
-  const [theme, setTheme] = useState<'light' | 'eye-care' | 'dark'>(() => {
+  // Theme state: 'light' | 'dark'
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     try { 
-        return (localStorage.getItem('inkflow_theme') as any) || 'dark'; 
+        const stored = localStorage.getItem('inkflow_theme');
+        return (stored === 'light' || stored === 'dark') ? stored : 'dark'; 
     } catch { return 'dark'; }
   });
 
@@ -179,8 +202,6 @@ function App() {
       
       if (theme === 'dark') {
           html.classList.add('dark');
-      } else if (theme === 'eye-care') {
-           html.classList.add('ec');
       }
       // 'light' is default (no class)
   }, [theme]);
@@ -188,9 +209,7 @@ function App() {
   if (!activeNovel) return null;
 
   const toggleTheme = () => {
-      if (theme === 'light') setTheme('eye-care');
-      else if (theme === 'eye-care') setTheme('dark');
-      else setTheme('light');
+      setTheme(prev => prev === 'light' ? 'dark' : 'light');
   };
 
   const createNewNovel = () => {
@@ -717,7 +736,7 @@ function App() {
                 <div className="flex flex-col justify-center">
                     <h1 className="font-bold text-lg tracking-tight hidden md:flex items-center gap-1 ec:text-ec-text leading-tight">
                         {siteName}
-                        <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded-full text-gray-500 dark:text-gray-400 font-medium ml-1">v1.6.0</span>
+                        <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded-full text-gray-500 dark:text-gray-400 font-medium ml-1">v1.7.0</span>
                     </h1>
                     {activeNovel.settings?.siteSettings?.siteDescription && (
                         <span className="text-xs text-gray-500 ec:text-ec-text hidden md:block leading-tight">{activeNovel.settings.siteSettings.siteDescription}</span>
@@ -771,8 +790,8 @@ function App() {
             <button onClick={handleDownloadAll} className="p-2 rounded-lg sm:hidden">⬇️</button>
             
             {/* Theme Toggle */}
-            <button onClick={toggleTheme} className="p-2 rounded-lg text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 ec:text-ec-text ec:hover:text-black transition-colors" title="切换主题: 白天/护眼/暗黑">
-                {theme === 'light' ? <SunIcon /> : (theme === 'eye-care' ? <EyeIcon /> : <MoonIcon />)}
+            <button onClick={toggleTheme} className="p-2 rounded-lg text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 ec:text-ec-text ec:hover:text-black transition-colors" title="切换主题: 白天/暗黑">
+                {theme === 'light' ? <SunIcon /> : <MoonIcon />}
             </button>
             
             <button onClick={() => setIsContactOpen(true)} className="p-2 text-gray-500 ec:text-ec-text"><MailIcon /></button>
@@ -793,6 +812,15 @@ function App() {
         </div>
       </main>
 
+      {/* Floating Action Button for Contact */}
+      <button 
+        onClick={() => setIsContactOpen(true)} 
+        className="fixed bottom-20 right-4 p-3 bg-indigo-600 text-white rounded-full shadow-lg hover:bg-indigo-700 transition-transform hover:scale-105 z-40"
+        title="联系开发者"
+      >
+        <UserIcon />
+      </button>
+
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} settings={settings} onSave={updateSettings} />
       <LibraryModal isOpen={isLibraryOpen} onClose={() => setIsLibraryOpen(false)} novels={novels} currentNovelId={currentNovelId} onSelectNovel={(id) => {setCurrentNovelId(id); setIsLibraryOpen(false);}} onCreateNovel={createNewNovel} onDeleteNovel={deleteNovel} onRenameNovel={renameNovel} onDeconstructNovel={handleDeconstructNovel} />
       
@@ -807,33 +835,86 @@ function App() {
 
       {optState && <ComparisonModal isOpen={optState.isOpen} onClose={() => { if (isStreaming) handleStop(); setOptState(null); }} title={optState.type === 'chapter' ? '章节重写/优化' : '段落润色'} oldContent={optState.originalContent} newContent={optState.newContent} onConfirm={handleConfirmOptimization} isApplying={false} isStreaming={isStreaming} />}
       
-      {/* Contact Modal with QR */}
+      {/* Contact Modal with Fixed WeChat QR */}
       {isContactOpen && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-              <div className="bg-white dark:bg-gray-900 ec:bg-ec-bg border ec:border-ec-border rounded-xl shadow-2xl w-full max-w-sm overflow-hidden">
+              <div className="bg-white dark:bg-gray-900 ec:bg-ec-bg border ec:border-ec-border rounded-xl shadow-2xl w-full max-w-sm overflow-hidden transform transition-all scale-100">
                   <div className="p-4 border-b ec:border-ec-border flex justify-between bg-gray-50 dark:bg-gray-900 ec:bg-ec-surface">
-                      <h3 className="ec:text-ec-text font-bold">联系开发者</h3>
-                      <button onClick={() => setIsContactOpen(false)} className="ec:text-ec-text"><XIcon/></button>
+                      <h3 className="ec:text-ec-text font-bold text-lg">加入官方交流群</h3>
+                      <button onClick={() => setIsContactOpen(false)} className="ec:text-ec-text hover:rotate-90 transition-transform"><XIcon/></button>
                   </div>
-                  <div className="p-8 text-center ec:text-ec-text flex flex-col items-center gap-4">
-                      <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 ec:text-ec-accent">
+                  <div className="p-8 text-center ec:text-ec-text flex flex-col items-center gap-5">
+                      <div className="relative group">
+                          <div className="absolute -inset-1 bg-gradient-to-tr from-indigo-500 to-purple-600 rounded-lg blur opacity-25 group-hover:opacity-50 transition duration-1000"></div>
+                          <img src="/images/weixin.jpg" alt="WeChat QR" className="relative w-48 h-48 object-cover border-4 border-white dark:border-gray-800 rounded-lg shadow-sm" />
+                      </div>
+                      <div className="space-y-1">
+                          <p className="text-sm font-bold text-gray-800 dark:text-white">扫码添加开发者好友</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">备注 <span className="text-indigo-600 font-bold">"InkFlow"</span>，邀请进入微信群</p>
+                      </div>
+                      <div className="w-full h-px bg-gray-100 dark:bg-gray-800"></div>
+                      <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 ec:text-ec-accent text-sm">
                           <MailIcon/>
                           <a href="mailto:lyjhxf@126.com" className="hover:underline">lyjhxf@126.com</a>
                       </div>
-                      {activeNovel.settings?.siteSettings?.contactQrCode && (
-                          <div className="mt-2">
-                              <p className="text-xs text-gray-500 mb-2">扫码添加好友</p>
-                              <img src={activeNovel.settings.siteSettings.contactQrCode} alt="Contact QR" className="w-48 h-48 object-cover border rounded-lg shadow-sm" />
-                          </div>
-                      )}
-                      {!activeNovel.settings?.siteSettings?.contactQrCode && (
-                          <p className="text-xs text-gray-400 mt-2">(未配置二维码)</p>
-                      )}
                   </div>
               </div>
           </div>
       )}
       
+      {/* First Time Welcome Modal (Step-by-Step Guide) */}
+      {isWelcomeOpen && (
+          <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fadeIn">
+              <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md p-8 text-center space-y-6 border border-gray-200 dark:border-gray-800 relative">
+                  
+                  {/* Step Indicators */}
+                  <div className="flex justify-center gap-2 mb-4">
+                      {welcomeSteps.map((_, idx) => (
+                          <div key={idx} className={`h-1.5 rounded-full transition-all duration-300 ${idx === welcomeStep ? 'w-8 bg-indigo-600' : 'w-2 bg-gray-200 dark:bg-gray-700'}`} />
+                      ))}
+                  </div>
+
+                  <div className="w-20 h-20 bg-indigo-50 dark:bg-indigo-900/30 rounded-full flex items-center justify-center mx-auto text-4xl mb-4 transition-transform duration-500 hover:scale-110">
+                      {welcomeSteps[welcomeStep].icon}
+                  </div>
+                  
+                  <div className="space-y-3 min-h-[120px]">
+                      <h2 className="text-2xl font-bold text-gray-900 dark:text-white transition-opacity duration-300">{welcomeSteps[welcomeStep].title}</h2>
+                      <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed px-2">
+                          {welcomeSteps[welcomeStep].content}
+                      </p>
+                  </div>
+
+                  <div className="flex gap-3 pt-4">
+                      {welcomeStep > 0 && (
+                          <button 
+                              onClick={() => setWelcomeStep(s => s - 1)}
+                              className="flex-1 py-2.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-xl font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                          >
+                              上一步
+                          </button>
+                      )}
+                      <button 
+                          onClick={() => {
+                              if (welcomeStep < welcomeSteps.length - 1) {
+                                  setWelcomeStep(s => s + 1);
+                              } else {
+                                  setIsWelcomeOpen(false);
+                              }
+                          }}
+                          className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-500/30 transition-all hover:scale-[1.02]"
+                      >
+                          {welcomeStep < welcomeSteps.length - 1 ? '下一步' : '开始创作'}
+                      </button>
+                  </div>
+                  
+                  <button onClick={() => setIsWelcomeOpen(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                      <XIcon />
+                  </button>
+              </div>
+          </div>
+      )}
+
       {/* Help Modal */}
       {isHelpOpen && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fadeIn">
@@ -844,12 +925,20 @@ function App() {
                </div>
                <div className="p-8 overflow-y-auto space-y-8 text-sm text-gray-600 dark:text-gray-300 ec:text-ec-text leading-relaxed">
                   
+                  <section className="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-xl border border-indigo-100 dark:border-indigo-800 flex items-start gap-4">
+                      <img src="/images/weixin.jpg" alt="WeChat QR" className="w-24 h-24 object-cover rounded-lg shrink-0 border" />
+                      <div>
+                          <h4 className="font-bold text-indigo-700 dark:text-indigo-300 text-base mb-1">加入官方交流群</h4>
+                          <p className="text-gray-600 dark:text-gray-300 mb-2">扫描左侧二维码添加开发者好友，备注 "InkFlow"，邀请您进入微信交流群，获取最新更新与写作技巧。</p>
+                      </div>
+                  </section>
+
                   <section>
                     <h4 className="font-bold text-gray-900 dark:text-white ec:text-ec-text mb-3 text-base flex items-center gap-2 border-b pb-2 border-gray-100 dark:border-gray-800 ec:border-ec-border">
                         <span className="text-xl">🚀</span> 快速开始 (Quick Start)
                     </h4>
                     <ol className="list-decimal list-inside space-y-3">
-                        <li><strong>初始化</strong>：在对话框输入想写的故事类型（如“赛博修仙”）。AI 会引导你确认【书名】、【世界观】和【核心梗概】。</li>
+                        <li><strong>初始化</strong>：在对话框输入想写的故事类型（如“修仙”、“都市”）。AI 会引导你确认【书名】、【世界观】和【核心梗概】。</li>
                         <li><strong>参数配置</strong>：点击右上角 <SettingsIcon/>，设置【API Key】（支持 OpenAI/DeepSeek 等）、【总章节数】和【单章字数】。</li>
                         <li><strong>生成大纲</strong>：让 AI 生成角色档案、势力设定和章节大纲。这些内容会自动归档到顶部的“数据库”和“章节”标签页中。</li>
                         <li><strong>批量写作</strong>：在“章节正文”页底部，点击【生成目录】 -> 【撰写 X 章】，AI 将自动连续创作。</li>
@@ -882,24 +971,7 @@ function App() {
                                   <p className="mt-1 opacity-90">在设置中添加【MCP 知识库】（如“世界观设定”）或【SKILL 技能】（如“环境描写要求”）。这些内容会作为系统指令实时注入，确保 AI 始终遵循设定。</p>
                               </div>
                           </li>
-                          <li className="flex gap-3">
-                              <div className="mt-1"><EditIcon /></div>
-                              <div>
-                                  <strong className="text-gray-900 dark:text-white ec:text-ec-text">精修与润色</strong>
-                                  <p className="mt-1 opacity-90">选中正文中的任意段落，点击悬浮的“润色”按钮进行局部优化。或点击章节标题栏的 <span className="text-indigo-600">✨ 优化</span> 按钮对全章进行升格。</p>
-                              </div>
-                          </li>
                       </ul>
-                  </section>
-
-                  <section>
-                     <h4 className="font-bold text-gray-900 dark:text-white ec:text-ec-text mb-2 text-base border-b pb-2 border-gray-100 dark:border-gray-800 ec:border-ec-border">❓ 常见问题 (FAQ)</h4>
-                     <ul className="list-disc list-inside space-y-2 opacity-90 pl-2">
-                         <li><strong>为什么网页打不开/白屏？</strong> <br/><span className="text-xs ml-5 block text-gray-500">可能是由于浏览器缓存了旧版本的数据导致冲突。请尝试在浏览器控制台中运行 `localStorage.clear()` 然后刷新页面。部署时请确保 Nginx 正确配置了伪静态规则。</span></li>
-                         <li><strong>如何复制内容？</strong> <br/><span className="text-xs ml-5 block text-gray-500">将鼠标悬停在对话气泡上，点击右上角的复制图标即可。</span></li>
-                         <li><strong>生成过程中卡顿/内存占用高？</strong> <br/><span className="text-xs ml-5 block text-gray-500">v1.4.0 已引入节流机制优化性能。若仍卡顿，建议使用“剧情锚点”清理上下文。</span></li>
-                         <li><strong>护眼模式颜色不对？</strong> <br/><span className="text-xs ml-5 block text-gray-500">请确保使用的是 v1.5.0 及以上版本，我们已修复了全站的护眼配色覆盖。</span></li>
-                     </ul>
                   </section>
                </div>
             </div>
@@ -917,21 +989,35 @@ function App() {
                <div className="p-6 overflow-y-auto custom-scrollbar">
                    <div className="relative border-l-2 border-gray-200 dark:border-gray-700 ec:border-ec-border ml-3 space-y-8">
                        
-                       {/* v1.6.0 */}
+                       {/* v1.7.0 */}
                        <div className="relative pl-6">
                            <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-green-500 border-4 border-white dark:border-gray-900 ec:border-ec-bg"></div>
                            <div className="flex flex-col gap-1">
                                <div className="flex items-center gap-2">
-                                   <h4 className="font-bold text-gray-900 dark:text-white ec:text-ec-text">v1.6.0 - 交互与写作法优化</h4>
+                                   <h4 className="font-bold text-gray-900 dark:text-white ec:text-ec-text">v1.7.0 - 社群与体验升级</h4>
                                    <span className="px-2 py-0.5 bg-green-100 text-green-700 text-[10px] rounded-full font-bold">Latest</span>
                                </div>
+                               <span className="text-xs text-gray-400 mb-2">2024-06-25</span>
+                               <ul className="text-sm text-gray-600 dark:text-gray-300 ec:text-ec-text space-y-1.5 list-disc list-inside">
+                                   <li>👥 <strong>官方社群</strong>：新增微信交流群入口，方便用户反馈。</li>
+                                   <li>🎈 <strong>新手引导</strong>：新增首次使用全功能引导。</li>
+                                   <li>🎨 <strong>界面精简</strong>：移除冗余的显示设置，优化主题切换（仅保留明/暗）。</li>
+                                   <li>💡 <strong>灵感推荐</strong>：对话框新增随机题材推荐组合。</li>
+                                   <li>🖱️ <strong>便捷操作</strong>：右下角新增悬浮按钮，一键联系开发者。</li>
+                               </ul>
+                           </div>
+                       </div>
+
+                       {/* v1.6.0 */}
+                       <div className="relative pl-6">
+                           <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-blue-500 border-4 border-white dark:border-gray-900 ec:border-ec-bg"></div>
+                           <div className="flex flex-col gap-1">
+                               <h4 className="font-bold text-gray-900 dark:text-white ec:text-ec-text">v1.6.0 - 交互优化与修复</h4>
                                <span className="text-xs text-gray-400 mb-2">2024-06-20</span>
                                <ul className="text-sm text-gray-600 dark:text-gray-300 ec:text-ec-text space-y-1.5 list-disc list-inside">
-                                   <li>🏗️ <strong>雪花法开关</strong>：右上角新增独立开关，绿色开启，灰色关闭，一键切换组合写作模式。</li>
-                                   <li>🧹 <strong>界面净化</strong>：移除聊天中繁琐的“注入上下文”提示，体验更沉浸。</li>
-                                   <li>📋 <strong>复制反馈</strong>：聊天气泡新增复制成功提示。</li>
-                                   <li>🎨 <strong>状态显色</strong>：启用中的功能（如锚点、雪花法）现在有明显的绿色高亮区分。</li>
-                                   <li>🐛 <strong>部署修复</strong>：增强了对旧版数据的兼容性，修复了导致白屏的 Crash 问题。</li>
+                                   <li>修复部署白屏问题。</li>
+                                   <li>新增“雪花法”独立开关。</li>
+                                   <li>优化扩写指令，强制字数达标。</li>
                                </ul>
                            </div>
                        </div>
@@ -940,16 +1026,68 @@ function App() {
                        <div className="relative pl-6">
                            <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-purple-500 border-4 border-white dark:border-gray-900 ec:border-ec-bg"></div>
                            <div className="flex flex-col gap-1">
-                               <div className="flex items-center gap-2">
-                                   <h4 className="font-bold text-gray-900 dark:text-white ec:text-ec-text">v1.5.0 - 体验与方法论升级</h4>
-                               </div>
+                               <h4 className="font-bold text-gray-900 dark:text-white ec:text-ec-text">v1.5.0 - 方法论升级</h4>
                                <span className="text-xs text-gray-400 mb-2">2024-06-15</span>
                                <ul className="text-sm text-gray-600 dark:text-gray-300 ec:text-ec-text space-y-1.5 list-disc list-inside">
-                                   <li>🏗️ <strong>组合写作法</strong>：引入“雪花法 + 救猫咪节拍表”双重引擎。</li>
-                                   <li>👁️ <strong>视觉优化</strong>：全站字号升级（最小16px），修复护眼模式。</li>
+                                   <li>引入“雪花写作法 + 救猫咪节拍表”。</li>
+                                   <li>全站字号升级。</li>
                                </ul>
                            </div>
                        </div>
+
+                       {/* v1.4.0 */}
+                       <div className="relative pl-6">
+                           <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-indigo-500 border-4 border-white dark:border-gray-900 ec:border-ec-bg"></div>
+                           <div className="flex flex-col gap-1">
+                               <h4 className="font-bold text-gray-900 dark:text-white ec:text-ec-text">v1.4.0 - 技能系统</h4>
+                               <span className="text-xs text-gray-400 mb-2">2024-06-01</span>
+                               <ul className="text-sm text-gray-600 dark:text-gray-300 ec:text-ec-text space-y-1.5 list-disc list-inside">
+                                   <li>上线 SKILL 写作技能系统。</li>
+                                   <li>生成节流优化性能。</li>
+                               </ul>
+                           </div>
+                       </div>
+
+                       {/* v1.3.0 */}
+                       <div className="relative pl-6">
+                           <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-indigo-400 border-4 border-white dark:border-gray-900 ec:border-ec-bg"></div>
+                           <div className="flex flex-col gap-1">
+                               <h4 className="font-bold text-gray-900 dark:text-white ec:text-ec-text">v1.3.0 - 语音朗读</h4>
+                               <span className="text-xs text-gray-400 mb-2">2024-05-22</span>
+                               <ul className="text-sm text-gray-600 dark:text-gray-300 ec:text-ec-text space-y-1.5 list-disc list-inside">
+                                   <li>新增 TTS 章节朗读功能。</li>
+                                   <li>支持正文直接编辑。</li>
+                               </ul>
+                           </div>
+                       </div>
+
+                       {/* v1.2.0 */}
+                       <div className="relative pl-6">
+                           <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-gray-400 border-4 border-white dark:border-gray-900 ec:border-ec-bg"></div>
+                           <div className="flex flex-col gap-1">
+                               <h4 className="font-bold text-gray-900 dark:text-white ec:text-ec-text">v1.2.0 - 书库管理</h4>
+                               <span className="text-xs text-gray-400 mb-2">2024-05-01</span>
+                               <ul className="text-sm text-gray-600 dark:text-gray-300 ec:text-ec-text space-y-1.5 list-disc list-inside">
+                                   <li>新增多本书籍切换与管理。</li>
+                                   <li>支持 LocalStorage 自动存档。</li>
+                               </ul>
+                           </div>
+                       </div>
+
+                       {/* v1.0.0 */}
+                       <div className="relative pl-6">
+                           <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-gray-300 border-4 border-white dark:border-gray-900 ec:border-ec-bg"></div>
+                           <div className="flex flex-col gap-1 opacity-70">
+                               <h4 className="font-bold text-gray-900 dark:text-white ec:text-ec-text">v1.0.0 - 初始发布</h4>
+                               <span className="text-xs text-gray-400 mb-2">2024-04-15</span>
+                               <ul className="text-sm text-gray-600 dark:text-gray-300 ec:text-ec-text space-y-1.5 list-disc list-inside">
+                                   <li>基础对话功能。</li>
+                                   <li>左右分屏视图。</li>
+                                   <li>支持 OpenAI 接口。</li>
+                               </ul>
+                           </div>
+                       </div>
+
                    </div>
                </div>
             </div>

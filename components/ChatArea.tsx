@@ -19,6 +19,12 @@ interface ChatAreaProps {
   onShowToast: (msg: string, type: 'success' | 'error' | 'info') => void;
 }
 
+const STARTER_PROMPTS = [
+    "玄幻修仙", "赛博朋克", "都市异能", 
+    "克苏鲁悬疑", "末世求生", "架空历史", 
+    "校园青春", "无限流", "星际科幻", "西方奇幻"
+];
+
 const ChatArea: React.FC<ChatAreaProps> = ({ 
   messages, 
   input, 
@@ -38,6 +44,12 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   // Edit State
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
+
+  // Random Starter Suggestions
+  const initialSuggestions = useMemo(() => {
+      const shuffled = [...STARTER_PROMPTS].sort(() => 0.5 - Math.random());
+      return shuffled.slice(0, 4);
+  }, []); // Computed once on mount
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -85,7 +97,11 @@ const ChatArea: React.FC<ChatAreaProps> = ({
 
   // Extract suggestions from the last message if it's from the model and not streaming
   const suggestions = useMemo(() => {
-    if (messages.length === 0) return [];
+    // If empty or just initial system message, show random starters
+    if (messages.length === 0 || (messages.length === 1 && messages[0].role === 'model')) {
+        return initialSuggestions;
+    }
+
     const lastMsg = messages[messages.length - 1];
     if (lastMsg.role !== 'model' || isStreaming) return [];
 
@@ -100,7 +116,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
         }
     }
     return [];
-  }, [messages, isStreaming]);
+  }, [messages, isStreaming, initialSuggestions]);
 
   // Clean content for display (remove the Options line and everything after it)
   const getDisplayContent = (content: string) => {

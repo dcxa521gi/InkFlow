@@ -3,6 +3,15 @@
 
 InkFlow 是一款基于 React 和 AI 大模型（OpenAI/Gemini）的现代化小说辅助创作工具。它采用独特的“对话+正文”分屏设计，结合了雪花写作法、剧情锚点和自动化长文生成技术，旨在帮助作者打破创作瓶颈，高效产出高质量网文。
 
+## 🏠首页样式
+<img width="2073" height="1118" alt="image" src="https://github.com/user-attachments/assets/b7ab13bf-082c-402f-b883-c497889adbfd" />
+<img width="2074" height="1132" alt="ScreenShot_2026-02-05_120342_142" src="https://github.com/user-attachments/assets/d5c44ba0-d2de-43cf-9046-e3e8af929d4f" />
+<img width="2061" height="1123" alt="image" src="https://github.com/user-attachments/assets/400a3006-1647-4210-b628-0ff535c7538c" />
+
+
+## 🛰开发者微信
+<img width="1657" height="857" alt="image" src="https://github.com/user-attachments/assets/d08474c3-4625-4793-ad77-43f1ca950a7f" />
+
 ## 🌟 核心特性
 
 *   **分屏创作**：左侧与 AI 对话构思，右侧实时预览大纲、设定集和正文。

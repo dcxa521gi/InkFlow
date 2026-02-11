@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import ChatArea from './components/ChatArea';
 import NovelView from './components/NovelView';
@@ -241,15 +240,12 @@ function App() {
 
   const updateMessages = (newMessages: Message[]) => {
       updateActiveNovel({ messages: newMessages });
-      // Removed parseChatForConfig call here to avoid double-processing or incorrect timing. 
-      // It is called in sendMessage and initial load logic if needed.
   };
   
   const updateSettings = (newSettings: AppSettings) => { updateActiveNovel({ settings: newSettings }); };
 
   // --- Logic for Anchor ---
 
-  // Generalized Anchor execution function
   const executeAnchor = async (currentHistory: Message[] = messages, silent: boolean = false): Promise<Message[]> => {
       if (isStreaming && !silent) {
           showToast("AI 正在生成中，请稍后再试", "error");
@@ -280,7 +276,6 @@ function App() {
       const aiMsgId = 'anchor-res-' + Date.now();
       const placeholder: Message = { id: aiMsgId, role: 'model', content: '', timestamp: Date.now() + 1 };
       
-      // Update UI to show anchor process
       updateMessages([...tempHistory, placeholder]);
 
       try {
@@ -309,7 +304,6 @@ function App() {
           
           const finalMessages = [...currentHistory, userMsg, { ...placeholder, content: finalSummary }, systemNotice];
           
-          // Update the session state
           setNovels(prev => prev.map(n => n.id === activeNovel.id ? { ...n, messages: finalMessages, contextSummary: finalSummary, lastModified: Date.now() } : n));
           
           if (!silent) showToast("剧情锚点构建成功！历史记录已保留。", "success");
@@ -318,7 +312,6 @@ function App() {
       } catch (e) {
           console.error("Anchoring failed", e);
           if (!silent) showToast("锚点构建失败，请检查网络", "error");
-          // Revert visual changes if needed, or just leave error state
           return currentHistory;
       } finally {
           setIsStreaming(false);
@@ -330,7 +323,6 @@ function App() {
   };
 
   const parseChatForConfig = (content: string) => {
-      // 1. Title detection
       const titleRegex = /(?:书名|小说名)[:：]\s*《?([^》\n]+)》?/;
       const titleMatch = content.match(titleRegex);
       if (titleMatch && titleMatch[1]) {
@@ -341,18 +333,14 @@ function App() {
           }
       }
       
-      // 2. Strict Chapter Count Detection (FIX: Only update if explicitly stated for the BOOK, not volume)
-      // Regex detects "全书预计" or "Book Total" to avoid capturing "Volume 1 contains 10 chapters"
       const chapMatch = content.match(/(?:全书预计|Total Novel Chapters|全书共|本书共)[:：]?\s*(\d+)\s*章/i);
       if (chapMatch && chapMatch[1]) {
           const num = parseInt(chapMatch[1]);
-          // Only update if it makes sense (e.g. > 10) and differs
           if (num > 10 && num !== settings.targetTotalChapters) {
               updateSettings({ ...settings, targetTotalChapters: num });
           }
       }
 
-      // 3. Word Count Detection
       const wordMatch = content.match(/(?:每章|单章|字数|words|设定为|字数目标)\D{0,10}?(\d+)\s*字/i);
       if (wordMatch && wordMatch[1]) {
           const num = parseInt(wordMatch[1]);
@@ -374,7 +362,6 @@ function App() {
       return { currentChapters, totalChapters: settings.targetTotalChapters || 20, wordCount: totalWordCount };
   }, [messages, settings.targetTotalChapters]);
 
-  // Memory Optimization: Throttled State Update
   const updateMessagesThrottled = (novelId: string, aiMsgId: string, newContent: string) => {
       setNovels(prevNovels => {
           return prevNovels.map(n => {
@@ -400,17 +387,11 @@ function App() {
     abortControllerRef.current = new AbortController();
     const signal = abortControllerRef.current.signal;
 
-    // Remove Visible Injection Message (Optimization #2)
-    // The context logic below still builds the prompt for the AI, but we don't push a visible 'sys-notice' bubble anymore.
     let uiHistory = [...currentHistory];
-    
-    // Add User Message
     const userMsg: Message = { id: Date.now().toString(), role: 'user', content: text, timestamp: Date.now() };
     uiHistory.push(userMsg);
-    
     setInputValue(''); 
     
-    // Add AI Placeholder
     const aiMsgId = (Date.now() + 1).toString();
     const aiMsgPlaceholder: Message = { id: aiMsgId, role: 'model', content: '', timestamp: Date.now() + 1 };
     uiHistory.push(aiMsgPlaceholder);
@@ -423,8 +404,6 @@ function App() {
       
       await generateStreamResponse(uiHistory, userMsg.content, settings, activeNovel.contextSummary, (chunk) => {
           fullResponseText += chunk;
-          
-          // Throttling: Update React state at most every 100ms
           const now = Date.now();
           if (now - lastUpdateTime > 100) {
               updateMessagesThrottled(activeNovel.id, aiMsgId, fullResponseText);
@@ -432,7 +411,6 @@ function App() {
           }
         }, signal);
       
-      // Final update to ensure complete text
       updateMessagesThrottled(activeNovel.id, aiMsgId, fullResponseText);
       parseChatForConfig(fullResponseText);
       return fullResponseText;
@@ -475,7 +453,6 @@ function App() {
 
   const handleMessageEdit = (id: string, newContent: string) => {
       const newMessages = messages.map(m => m.id === id ? { ...m, content: newContent } : m);
-      // Directly update without parsing to prevent accidental config changes during edit
       updateActiveNovel({ messages: newMessages });
   };
 
@@ -484,7 +461,6 @@ function App() {
       await sendMessage("请简要总结之前的对话内容，包含已确定的核心设定、故事进展以及当前待解决的问题。");
   };
   
-  // Toggle Snowflake Method
   const handleSnowflakeToggle = async () => {
       if (isStreaming) return;
       
@@ -559,8 +535,16 @@ function App() {
 2. **细节填充**：请通过大量的环境描写（光影/声音/气味）、细致的动作分解、以及深度的心理活动描写来充实篇幅。
 3. **场景展开**：不要一笔带过，请将本章的关键冲突拆解为具体的画面和对话。
 
-【排版】
-保持 Markdown 格式，标题为 \`## ${chapterTitle}\`。`;
+【排版要求】
+1. 保持 Markdown 格式，标题为 \`## ${chapterTitle}\`。
+2. **正文结束后**，请务必换行并输出 \`=== 章节分析 ===\`，然后按以下格式补充信息：
+- **出场角色**：[列出角色名]
+- **场景设定**：[时间、地点、氛围]
+- **情节要点**：[简述本章发生的核心事件]
+- **伏笔埋设**：[本章埋下的线索]
+- **情感基调**：[例如：压抑、热血、悲伤]
+- **虚实目标**：[实：具体动作目标 / 虚：心理动机]
+- **短剧脚本提示词**：[生成本章高潮镜头的 AI 绘画提示词，英文，逗号分隔]`;
       }
       
       await executeOptimization(prompt, content, messageId, 'chapter');
@@ -682,17 +666,17 @@ function App() {
 
 ${skillReminder}
 
-【如何扩充篇幅 (必读)】
-1. **慢镜头描写**：像电影慢镜头一样描写动作，将一秒钟发生的事情拆解为几百字的描写。
-2. **环境渲染**：不要只写剧情，要花大量笔墨描写环境氛围（光线、气味、温度、声音），以此烘托人物心境。
-3. **心理独白**：深入挖掘角色的内心世界，描写他们的犹豫、恐惧、算计和回忆。
-4. **多回合对话**：增加人物之间的语言交锋，不要一句话把事情说死，要来回拉扯。
-5. **场景拆分**：将本章拆分为 3-4 个具体的子场景，每个场景都要完整展开。
-
 【排版要求】
 1. 必须以 \`## 第X章 标题\` 开头 (请勿包含 (草稿) 或其他备注)。
-2. **严禁**在结尾输出 "Options:" 交互选项。
-3. **严禁**输出任何 "好的"、"这是正文" 等闲聊内容，直接输出小说内容。`;
+2. **严禁**输出任何 "好的"、"这是正文" 等闲聊内容，直接输出小说内容。
+3. **正文结束后**，请务必换行并输出 \`=== 章节分析 ===\`，然后按以下格式补充信息：
+- **出场角色**：[列出角色名]
+- **场景设定**：[时间、地点、氛围]
+- **情节要点**：[简述本章发生的核心事件]
+- **伏笔埋设**：[本章埋下的线索]
+- **情感基调**：[例如：压抑、热血、悲伤]
+- **虚实目标**：[实：具体动作目标 / 虚：心理动机]
+- **短剧脚本提示词**：[生成本章高潮镜头的 AI 绘画提示词，英文，逗号分隔]`;
               
               const userMsg: Message = { id: Date.now().toString(), role: 'user', content: `(自动任务 ${i}/${num}) ${prompt}`, timestamp: Date.now() };
               currentHistory = [...currentHistory, userMsg];
@@ -759,7 +743,7 @@ ${skillReminder}
                 <div className="flex flex-col justify-center">
                     <h1 className="font-bold text-lg tracking-tight hidden md:flex items-center gap-1 ec:text-ec-text leading-tight">
                         {siteName}
-                        <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded-full text-gray-500 dark:text-gray-400 font-medium ml-1">v1.7.1</span>
+                        <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded-full text-gray-500 dark:text-gray-400 font-medium ml-1">v1.7.2</span>
                     </h1>
                     {activeNovel.settings?.siteSettings?.siteDescription && (
                         <span className="text-xs text-gray-500 ec:text-ec-text hidden md:block leading-tight">{activeNovel.settings.siteSettings.siteDescription}</span>
@@ -1012,49 +996,50 @@ ${skillReminder}
                <div className="p-6 overflow-y-auto custom-scrollbar">
                    <div className="relative border-l-2 border-gray-200 dark:border-gray-700 ec:border-ec-border ml-3 space-y-8">
                        
-                       {/* v1.7.1 */}
+                        {/* v1.7.2 */}
                        <div className="relative pl-6">
-                           <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-red-500 border-4 border-white dark:border-gray-900 ec:border-ec-bg"></div>
+                           <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-indigo-500 border-4 border-white dark:border-gray-900 ec:border-ec-bg"></div>
                            <div className="flex flex-col gap-1">
                                <div className="flex items-center gap-2">
-                                   <h4 className="font-bold text-gray-900 dark:text-white ec:text-ec-text">v1.7.1 - 核心修复与严格模式</h4>
-                                   <span className="px-2 py-0.5 bg-red-100 text-red-700 text-[10px] rounded-full font-bold">Latest</span>
+                                   <h4 className="font-bold text-gray-900 dark:text-white ec:text-ec-text">v1.7.2 - 沉浸式创作与分析</h4>
+                                   <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-[10px] rounded-full font-bold">Latest</span>
                                </div>
                                <span className="text-xs text-gray-400 mb-2">2026-02-06</span>
                                <ul className="text-sm text-gray-600 dark:text-gray-300 ec:text-ec-text space-y-1.5 list-disc list-inside">
-                                   <li>🐛 <strong>修复编辑功能</strong>：修复章节正文编辑后不保存的问题，优化实时字数统计。</li>
-                                   <li>🛑 <strong>严格字数执行</strong>：强制 AI 严格遵守【每章字数】设定，误差控制在 500 字以内。</li>
-                                   <li>🛡️ <strong>设定保护</strong>：修复了 AI 自动生成的目录章节数覆盖全局设置的问题。</li>
-                                   <li>🧠 <strong>知识库增强</strong>：生成正文时，强制注入并遵守 MCP 知识库和 SKILL 技能要求。</li>
+                                   <li>🧹 <strong>聊天区净化</strong>：生成正文时自动折叠聊天消息，仅显示生成状态，保持界面清爽。</li>
+                                   <li>📊 <strong>章节深度分析</strong>：新增正文后自动生成“角色/场景/伏笔/情感/短剧Prompt”等多维分析看板。</li>
+                                   <li>⚡ <strong>批量生成优化</strong>：提升了批量生成时的上下文连贯性。</li>
+                               </ul>
+                           </div>
+                       </div>
+
+                       {/* v1.7.1 */}
+                       <div className="relative pl-6">
+                           <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-gray-400 border-4 border-white dark:border-gray-900 ec:border-ec-bg"></div>
+                           <div className="flex flex-col gap-1">
+                               <div className="flex items-center gap-2">
+                                   <h4 className="font-bold text-gray-900 dark:text-white ec:text-ec-text">v1.7.1 - 核心修复与严格模式</h4>
+                               </div>
+                               <span className="text-xs text-gray-400 mb-2">2026-02-06</span>
+                               <ul className="text-sm text-gray-600 dark:text-gray-300 ec:text-ec-text space-y-1.5 list-disc list-inside">
+                                   <li>🐛 修复编辑功能保存问题。</li>
+                                   <li>🛑 强制 AI 严格遵守字数设定。</li>
+                                   <li>🧠 增强知识库注入逻辑。</li>
                                </ul>
                            </div>
                        </div>
 
                        {/* v1.7.0 */}
                        <div className="relative pl-6">
-                           <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-green-500 border-4 border-white dark:border-gray-900 ec:border-ec-bg"></div>
+                           <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-gray-400 border-4 border-white dark:border-gray-900 ec:border-ec-bg"></div>
                            <div className="flex flex-col gap-1">
                                <div className="flex items-center gap-2">
                                    <h4 className="font-bold text-gray-900 dark:text-white ec:text-ec-text">v1.7.0 - 社群与体验升级</h4>
                                </div>
                                <span className="text-xs text-gray-400 mb-2">2026-02-05</span>
                                <ul className="text-sm text-gray-600 dark:text-gray-300 ec:text-ec-text space-y-1.5 list-disc list-inside">
-                                   <li>👥 <strong>官方社群</strong>：新增微信交流群入口，方便用户反馈。</li>
-                                   <li>🎈 <strong>新手引导</strong>：新增首次使用全功能引导。</li>
-                                   <li>💡 <strong>灵感推荐</strong>：对话框新增随机题材推荐组合。</li>
-                               </ul>
-                           </div>
-                       </div>
-
-                       {/* v1.6.0 */}
-                       <div className="relative pl-6">
-                           <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-blue-500 border-4 border-white dark:border-gray-900 ec:border-ec-bg"></div>
-                           <div className="flex flex-col gap-1">
-                               <h4 className="font-bold text-gray-900 dark:text-white ec:text-ec-text">v1.6.0 - 交互优化与修复</h4>
-                               <span className="text-xs text-gray-400 mb-2">2026-02-04</span>
-                               <ul className="text-sm text-gray-600 dark:text-gray-300 ec:text-ec-text space-y-1.5 list-disc list-inside">
-                                   <li>修复部署白屏问题。</li>
-                                   <li>新增“雪花法”独立开关。</li>
+                                   <li>👥 新增官方微信群入口。</li>
+                                   <li>🎈 新增新手引导。</li>
                                </ul>
                            </div>
                        </div>

@@ -1,10 +1,9 @@
-
 import React, { useRef, useEffect, useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
 import { Message } from '../types';
-import { SendIcon, CopyIcon, StopIcon, EditIcon, SparklesIcon } from './Icons';
+import { SendIcon, CopyIcon, StopIcon, EditIcon, SparklesIcon, BookOpenIcon } from './Icons';
 
 interface ChatAreaProps {
   messages: Message[];
@@ -74,7 +73,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   };
 
   // Robust regex for matching Options at the end of text
-  // Matches: \nOptions:, \n**Options**:, \nOptions： (Chinese)
   const OPTIONS_REGEX = /(?:^|\n)\s*(?:\*\*|__)?Options(?:\*\*|__)?[:：][\s\S]*$/i;
 
   const startEditing = (msg: Message) => {
@@ -123,6 +121,17 @@ const ChatArea: React.FC<ChatAreaProps> = ({
       return content.replace(OPTIONS_REGEX, '').trim();
   };
 
+  // Helper to detect if a message is a Chapter Content
+  const isChapterMessage = (content: string) => {
+      // Check for strictly formatted chapter headers
+      return /^##\s*第[0-9一二三四五六七八九十]+章/.test(content.trim());
+  };
+
+  const extractChapterTitle = (content: string) => {
+      const match = content.match(/^##\s*(第[^\s]+章\s*[^\n]*)/);
+      return match ? match[1] : "新章节";
+  };
+
   return (
     <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900/50 ec:bg-ec-surface relative transition-colors">
       {/* Messages List */}
@@ -134,84 +143,100 @@ const ChatArea: React.FC<ChatAreaProps> = ({
           </div>
         )}
         
-        {messages.map((msg, index) => (
-          <div 
-            key={msg.id} 
-            className={`flex w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-          >
-            <div 
-              className={`max-w-[85%] rounded-2xl px-5 py-3.5 shadow-sm relative group ${
-                msg.role === 'user' 
-                  ? 'bg-indigo-600 text-white rounded-br-none ec:bg-ec-accent' 
-                  : 'bg-white dark:bg-gray-800 ec:bg-ec-bg text-gray-800 dark:text-gray-200 ec:text-ec-text rounded-bl-none border border-gray-200 dark:border-gray-700 ec:border-ec-border'
-              }`}
-            >
-              {editingId === msg.id ? (
-                  <div className="flex flex-col gap-2 min-w-[300px]">
-                      <textarea 
-                        value={editContent}
-                        onChange={(e) => setEditContent(e.target.value)}
-                        className="w-full h-32 p-2 text-sm bg-gray-100 dark:bg-gray-900 ec:bg-ec-surface border border-gray-300 dark:border-gray-600 ec:border-ec-border rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 text-gray-900 dark:text-gray-100 ec:text-ec-text"
-                      />
-                      <div className="flex justify-end gap-2">
-                          <button onClick={cancelEdit} className="px-2 py-1 text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">取消</button>
-                          <button onClick={saveEdit} className="px-3 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-500">保存</button>
-                      </div>
-                  </div>
-              ) : (
-                <div className={`text-sm leading-relaxed prose prose-sm max-w-none 
-                    ${msg.role === 'user' 
-                        ? 'prose-invert text-white' 
-                        : 'text-gray-800 dark:text-gray-200 ec:text-ec-text dark:prose-invert ec:prose-eyecare dark:prose-headings:text-gray-100 dark:prose-p:text-gray-300 dark:prose-strong:text-white dark:prose-blockquote:text-gray-400 dark:prose-code:text-pink-300'
-                    }`}>
-                    <ReactMarkdown
-                        remarkPlugins={[remarkGfm, remarkBreaks]}
-                        components={{
-                            p: ({children}) => <p className="!mb-2 !mt-0 last:!mb-0">{children}</p>,
-                            a: ({node, ...props}) => <a {...props} className="text-blue-300 hover:underline" target="_blank" rel="noopener noreferrer" />,
-                            code: ({node, className, children, ...props}: any) => {
-                                const match = /language-(\w+)/.exec(className || '')
-                                return match ? (
-                                    <code className="block bg-black/20 rounded p-2 my-2 text-xs font-mono whitespace-pre-wrap overflow-x-auto" {...props}>{children}</code>
-                                ) : (
-                                    <code className="bg-black/20 rounded px-1 py-0.5 text-xs font-mono" {...props}>{children}</code>
-                                )
-                            }
-                        }}
-                    >
-                    {msg.role === 'model' ? getDisplayContent(msg.content) : msg.content}
-                    </ReactMarkdown>
+        {messages.map((msg, index) => {
+            const isChapter = msg.role === 'model' && isChapterMessage(msg.content);
+            // Don't collapse if it's currently streaming
+            const shouldCollapse = isChapter && !(isStreaming && index === messages.length - 1);
 
-                    {msg.role === 'model' && isStreaming && index === messages.length - 1 && (
-                    <span className="typing-cursor inline-block w-2 h-4 bg-indigo-400 align-middle ml-1"></span>
-                    )}
-                </div>
-              )}
-              
-              {/* Message Actions */}
-              {!isStreaming && editingId !== msg.id && (
-                  <div className={`absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity`}>
-                     {msg.role === 'model' && (
-                        <button 
-                            onClick={() => startEditing(msg)}
-                            className="p-1 rounded hover:bg-black/10 dark:hover:bg-black/20 text-gray-400"
-                            title="编辑"
+            return (
+              <div 
+                key={msg.id} 
+                className={`flex w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                <div 
+                  className={`max-w-[85%] rounded-2xl px-5 py-3.5 shadow-sm relative group ${
+                    msg.role === 'user' 
+                      ? 'bg-indigo-600 text-white rounded-br-none ec:bg-ec-accent' 
+                      : 'bg-white dark:bg-gray-800 ec:bg-ec-bg text-gray-800 dark:text-gray-200 ec:text-ec-text rounded-bl-none border border-gray-200 dark:border-gray-700 ec:border-ec-border'
+                  }`}
+                >
+                  {shouldCollapse ? (
+                      <div className="flex items-center gap-3 py-1 pr-4">
+                          <div className="p-2 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full">
+                              <BookOpenIcon />
+                          </div>
+                          <div>
+                              <div className="font-bold text-gray-900 dark:text-white text-sm">{extractChapterTitle(msg.content)}</div>
+                              <div className="text-xs text-green-600 dark:text-green-400 font-medium">✅ 正文已生成，请前往右侧【章节正文】标签查看。</div>
+                          </div>
+                      </div>
+                  ) : editingId === msg.id ? (
+                      <div className="flex flex-col gap-2 min-w-[300px]">
+                          <textarea 
+                            value={editContent}
+                            onChange={(e) => setEditContent(e.target.value)}
+                            className="w-full h-32 p-2 text-sm bg-gray-100 dark:bg-gray-900 ec:bg-ec-surface border border-gray-300 dark:border-gray-600 ec:border-ec-border rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 text-gray-900 dark:text-gray-100 ec:text-ec-text"
+                          />
+                          <div className="flex justify-end gap-2">
+                              <button onClick={cancelEdit} className="px-2 py-1 text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">取消</button>
+                              <button onClick={saveEdit} className="px-3 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-500">保存</button>
+                          </div>
+                      </div>
+                  ) : (
+                    <div className={`text-sm leading-relaxed prose prose-sm max-w-none 
+                        ${msg.role === 'user' 
+                            ? 'prose-invert text-white' 
+                            : 'text-gray-800 dark:text-gray-200 ec:text-ec-text dark:prose-invert ec:prose-eyecare dark:prose-headings:text-gray-100 dark:prose-p:text-gray-300 dark:prose-strong:text-white dark:prose-blockquote:text-gray-400 dark:prose-code:text-pink-300'
+                        }`}>
+                        <ReactMarkdown
+                            remarkPlugins={[remarkGfm, remarkBreaks]}
+                            components={{
+                                p: ({children}) => <p className="!mb-2 !mt-0 last:!mb-0">{children}</p>,
+                                a: ({node, ...props}) => <a {...props} className="text-blue-300 hover:underline" target="_blank" rel="noopener noreferrer" />,
+                                code: ({node, className, children, ...props}: any) => {
+                                    const match = /language-(\w+)/.exec(className || '')
+                                    return match ? (
+                                        <code className="block bg-black/20 rounded p-2 my-2 text-xs font-mono whitespace-pre-wrap overflow-x-auto" {...props}>{children}</code>
+                                    ) : (
+                                        <code className="bg-black/20 rounded px-1 py-0.5 text-xs font-mono" {...props}>{children}</code>
+                                    )
+                                }
+                            }}
                         >
-                            <EditIcon />
+                        {msg.role === 'model' ? getDisplayContent(msg.content) : msg.content}
+                        </ReactMarkdown>
+
+                        {msg.role === 'model' && isStreaming && index === messages.length - 1 && (
+                        <span className="typing-cursor inline-block w-2 h-4 bg-indigo-400 align-middle ml-1"></span>
+                        )}
+                    </div>
+                  )}
+                  
+                  {/* Message Actions */}
+                  {!isStreaming && editingId !== msg.id && !shouldCollapse && (
+                      <div className={`absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity`}>
+                         {msg.role === 'model' && (
+                            <button 
+                                onClick={() => startEditing(msg)}
+                                className="p-1 rounded hover:bg-black/10 dark:hover:bg-black/20 text-gray-400"
+                                title="编辑"
+                            >
+                                <EditIcon />
+                            </button>
+                         )}
+                         <button 
+                            onClick={() => copyToClipboard(getDisplayContent(msg.content))}
+                            className={`p-1 rounded hover:bg-black/10 dark:hover:bg-black/20 ${msg.role === 'user' ? 'text-indigo-200' : 'text-gray-400'}`}
+                            title="复制内容"
+                        >
+                            <CopyIcon />
                         </button>
-                     )}
-                     <button 
-                        onClick={() => copyToClipboard(getDisplayContent(msg.content))}
-                        className={`p-1 rounded hover:bg-black/10 dark:hover:bg-black/20 ${msg.role === 'user' ? 'text-indigo-200' : 'text-gray-400'}`}
-                        title="复制内容"
-                    >
-                        <CopyIcon />
-                    </button>
-                  </div>
-              )}
-            </div>
-          </div>
-        ))}
+                      </div>
+                  )}
+                </div>
+              </div>
+            );
+        })}
         <div ref={messagesEndRef} />
       </div>
 

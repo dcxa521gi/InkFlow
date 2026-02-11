@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -16,6 +15,44 @@ interface NovelViewProps {
   isGenerating: boolean;
   onMessageEdit?: (id: string, newContent: string) => void;
 }
+
+// Helper to extract analysis section
+const extractAnalysis = (content: string) => {
+    const splitKey = "=== 章节分析 ===";
+    const parts = content.split(splitKey);
+    if (parts.length > 1) {
+        return {
+            content: parts[0].trim(),
+            analysis: parts[1].trim()
+        };
+    }
+    return { content: content.trim(), analysis: null };
+};
+
+// Helper to parse key-value lines from analysis text
+const parseAnalysisData = (text: string | null) => {
+    if (!text) return null;
+    const lines = text.split('\n');
+    const data: Record<string, string> = {};
+    
+    // Keys we care about
+    const keys = [
+        '出场角色', '场景设定', '情节要点', '伏笔埋设', 
+        '情感基调', '虚实目标', '短剧脚本提示词'
+    ];
+    
+    lines.forEach(line => {
+        const match = line.match(/^\s*-\s*\*\*([^*]+)\*\*：(.*)$/);
+        if (match) {
+            const key = match[1].trim();
+            const value = match[2].trim();
+            if (keys.includes(key)) {
+                data[key] = value;
+            }
+        }
+    });
+    return data;
+};
 
 const NovelView: React.FC<NovelViewProps> = ({ 
     messages, 
@@ -263,7 +300,7 @@ const NovelView: React.FC<NovelViewProps> = ({
           id: `${s.msgId}-ch-${idx}`,
           messageId: s.msgId,
           title: s.title,
-          content: s.content,
+          content: s.content, // Includes both text and analysis block
           wordCount: s.content.length,
           startIndex: 0, 
           endIndex: s.content.length
@@ -334,7 +371,10 @@ const NovelView: React.FC<NovelViewProps> = ({
 
     cancelSpeech(); 
     
-    const sentences = content.replace(/([。！？\n]+)/g, '$1|').split('|').filter(s => s.trim().length > 0);
+    // Clean analysis part before speaking
+    const { content: speakContent } = extractAnalysis(content);
+
+    const sentences = speakContent.replace(/([。！？\n]+)/g, '$1|').split('|').filter(s => s.trim().length > 0);
     
     sentenceQueueRef.current = sentences;
     setSpeakingChapterId(chapterId);
@@ -378,7 +418,8 @@ const NovelView: React.FC<NovelViewProps> = ({
   };
   
   const handleDownloadChapter = (title: string, content: string) => {
-      const blob = new Blob([`${title}\n\n${content}`], { type: 'text/plain' });
+      const { content: cleanContent } = extractAnalysis(content);
+      const blob = new Blob([`${title}\n\n${cleanContent}`], { type: 'text/plain' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -393,7 +434,12 @@ const NovelView: React.FC<NovelViewProps> = ({
       setIsDownloadMenuOpen(false);
       const bookTitle = settings?.targetTotalChapters ? `小说-${Date.now()}` : "小说导出";
       if (chapters.length === 0) { alert("暂无章节内容可下载。"); return; }
-      const fullText = chapters.map(c => `${c.title}\n\n${c.content}`).join('\n\n-------------------\n\n');
+      
+      // Clean analysis for download
+      const fullText = chapters.map(c => {
+          const { content: clean } = extractAnalysis(c.content);
+          return `${c.title}\n\n${clean}`;
+      }).join('\n\n-------------------\n\n');
 
       if (format === 'txt') {
           const blob = new Blob([fullText], { type: 'text/plain' });
@@ -402,7 +448,10 @@ const NovelView: React.FC<NovelViewProps> = ({
           const blob = new Blob([`# ${bookTitle}\n\n` + fullText], { type: 'text/markdown' });
           triggerDownload(blob, `${bookTitle}.md`);
       } else if (format === 'word') {
-          const htmlContent = `<html><head><meta charset='utf-8'></head><body>${chapters.map(c => `<h1>${c.title}</h1><p>${c.content.replace(/\n/g, '<br/>')}</p>`).join('<br/><hr/><br/>')}</body></html>`;
+          const htmlContent = `<html><head><meta charset='utf-8'></head><body>${chapters.map(c => {
+               const { content: clean } = extractAnalysis(c.content);
+               return `<h1>${c.title}</h1><p>${clean.replace(/\n/g, '<br/>')}</p>`;
+          }).join('<br/><hr/><br/>')}</body></html>`;
           const blob = new Blob([htmlContent], { type: 'application/msword' });
           triggerDownload(blob, `${bookTitle}.doc`);
       }
@@ -612,7 +661,7 @@ const NovelView: React.FC<NovelViewProps> = ({
                      </div>
                  )}
              </div>
-            <button onClick={() => { if(activeTab === 'chapters') handleCopy(chapters.map(c => `${c.title}\n\n${c.content}`).join('\n\n')); else handleCopy(activeTab === 'dialogue' ? dialogueContent : (activeTab === 'settings' ? settingsContent : databaseContent)); }} className="text-xs flex items-center gap-1 px-2 py-1 bg-white dark:bg-gray-800 ec:bg-ec-surface hover:bg-gray-100 dark:hover:bg-gray-700 ec:hover:bg-ec-bg text-gray-600 dark:text-gray-300 ec:text-ec-text rounded border border-gray-200 dark:border-gray-700 ec:border-ec-border shadow-sm">
+            <button onClick={() => { if(activeTab === 'chapters') handleCopy(chapters.map(c => { const {content} = extractAnalysis(c.content); return `${c.title}\n\n${content}`; }).join('\n\n')); else handleCopy(activeTab === 'dialogue' ? dialogueContent : (activeTab === 'settings' ? settingsContent : databaseContent)); }} className="text-xs flex items-center gap-1 px-2 py-1 bg-white dark:bg-gray-800 ec:bg-ec-surface hover:bg-gray-100 dark:hover:bg-gray-700 ec:hover:bg-ec-bg text-gray-600 dark:text-gray-300 ec:text-ec-text rounded border border-gray-200 dark:border-gray-700 ec:border-ec-border shadow-sm">
                 <CopyIcon /> {copyStatus}
             </button>
         </div>
@@ -650,6 +699,9 @@ const NovelView: React.FC<NovelViewProps> = ({
                      // Inverted logic: expandedChapters instead of collapsedChapters
                      const isExpanded = expandedChapters.has(chapter.id);
                      const isSpeaking = speakingChapterId === chapter.id;
+                     const { content: displayContent, analysis } = extractAnalysis(chapter.content);
+                     const analysisData = parseAnalysisData(analysis);
+
                      return (
                      <div key={chapter.id} className={`bg-gray-50 dark:bg-gray-900 ec:bg-ec-surface border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow ${isSpeaking ? 'border-indigo-500 ring-1 ring-indigo-500' : 'border-gray-200 dark:border-gray-800 ec:border-ec-border'}`}>
                          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-800 ec:border-ec-border bg-white dark:bg-gray-900/50 ec:bg-ec-surface cursor-pointer select-none" onClick={() => toggleExpand(chapter.id)}>
@@ -707,8 +759,8 @@ const NovelView: React.FC<NovelViewProps> = ({
 
                                  <div className="w-px h-3 bg-gray-300 dark:bg-gray-700 ec:bg-ec-border mx-1"></div>
 
-                                 <button onClick={() => onChapterAction('optimize', chapter.title, chapter.content, chapter.messageId)} className="p-1.5 text-xs text-indigo-600 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-900/30 ec:hover:bg-ec-surface rounded" title="优化润色">✨ 优化</button>
-                                 <button onClick={() => onChapterAction('regenerate', chapter.title, chapter.content, chapter.messageId)} className="p-1.5 text-xs text-orange-600 hover:bg-orange-50 dark:text-orange-400 dark:hover:bg-orange-900/30 ec:hover:bg-ec-surface rounded" title="重新生成">🔄 重写</button>
+                                 <button onClick={() => onChapterAction('optimize', chapter.title, displayContent, chapter.messageId)} className="p-1.5 text-xs text-indigo-600 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-900/30 ec:hover:bg-ec-surface rounded" title="优化润色">✨ 优化</button>
+                                 <button onClick={() => onChapterAction('regenerate', chapter.title, displayContent, chapter.messageId)} className="p-1.5 text-xs text-orange-600 hover:bg-orange-50 dark:text-orange-400 dark:hover:bg-orange-900/30 ec:hover:bg-ec-surface rounded" title="重新生成">🔄 重写</button>
                                  
                                  {/* Edit Button */}
                                  <button onClick={() => handleEditClick(chapter)} className="p-1.5 text-xs text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/30 ec:hover:bg-ec-surface rounded flex items-center gap-1" title="编辑内容">
@@ -719,8 +771,43 @@ const NovelView: React.FC<NovelViewProps> = ({
                              </div>
                          </div>
                          {isExpanded && (
-                             <div className="p-5 prose dark:prose-invert ec:prose-eyecare prose-indigo max-w-none leading-7 md:leading-8 dark:prose-headings:text-gray-100 dark:prose-p:text-gray-300 animate-fadeIn" style={contentStyle}>
-                                <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>{chapter.content}</ReactMarkdown>
+                             <div className="animate-fadeIn">
+                                 <div className="p-5 prose dark:prose-invert ec:prose-eyecare prose-indigo max-w-none leading-7 md:leading-8 dark:prose-headings:text-gray-100 dark:prose-p:text-gray-300" style={contentStyle}>
+                                    <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>{displayContent}</ReactMarkdown>
+                                 </div>
+
+                                 {/* Chapter Analysis Dashboard */}
+                                 {analysisData && (
+                                     <div className="mx-5 mb-5 border border-indigo-100 dark:border-indigo-900/50 rounded-xl overflow-hidden bg-white dark:bg-gray-800/30">
+                                         <div className="bg-indigo-50 dark:bg-indigo-900/30 px-4 py-2 text-xs font-bold text-indigo-700 dark:text-indigo-300 flex items-center gap-2">
+                                             <SparklesIcon /> 本章深度分析 (AI Generated Insights)
+                                         </div>
+                                         <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                                             
+                                             <div className="space-y-3">
+                                                 <div><div className="font-bold text-gray-500 mb-1">🎭 出场角色</div><div className="text-gray-800 dark:text-gray-200">{analysisData['出场角色']}</div></div>
+                                                 <div><div className="font-bold text-gray-500 mb-1">🗺️ 场景设定</div><div className="text-gray-800 dark:text-gray-200">{analysisData['场景设定']}</div></div>
+                                                 <div><div className="font-bold text-gray-500 mb-1">📈 情节要点</div><div className="text-gray-800 dark:text-gray-200">{analysisData['情节要点']}</div></div>
+                                             </div>
+
+                                             <div className="space-y-3">
+                                                 <div><div className="font-bold text-gray-500 mb-1">🧱 伏笔埋设</div><div className="text-gray-800 dark:text-gray-200">{analysisData['伏笔埋设']}</div></div>
+                                                 <div><div className="font-bold text-gray-500 mb-1">🎨 情感基调</div><div className="text-gray-800 dark:text-gray-200">{analysisData['情感基调']}</div></div>
+                                                 <div><div className="font-bold text-gray-500 mb-1">🎯 虚实目标</div><div className="text-gray-800 dark:text-gray-200">{analysisData['虚实目标']}</div></div>
+                                             </div>
+
+                                             {analysisData['短剧脚本提示词'] && (
+                                                 <div className="md:col-span-2 mt-2 bg-gray-100 dark:bg-black/30 p-3 rounded border border-dashed border-gray-300 dark:border-gray-700">
+                                                     <div className="font-bold text-gray-500 mb-1 flex justify-between items-center">
+                                                         <span>🎬 短剧/分镜 MJ提示词 (Prompt)</span>
+                                                         <button onClick={() => handleCopy(analysisData['短剧脚本提示词'])} className="text-indigo-600 hover:underline">复制</button>
+                                                     </div>
+                                                     <div className="font-mono text-gray-600 dark:text-gray-400 break-all select-all">{analysisData['短剧脚本提示词']}</div>
+                                                 </div>
+                                             )}
+                                         </div>
+                                     </div>
+                                 )}
                              </div>
                          )}
                      </div>
